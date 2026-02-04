@@ -37,6 +37,7 @@ migrate_working_dir/
 backend/node_modules/
 backend/.env
 .env
+.env.example
 
 # Symbolication related
 app.*.symbols

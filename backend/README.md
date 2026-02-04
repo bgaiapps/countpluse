@@ -43,9 +43,8 @@ Backend server for Countpluse user registration, email verification, and authent
    JWT_EXPIRE=7d
    
    # Email Configuration (Gmail)
-   EMAIL_SERVICE=gmail
-   EMAIL_USER=your_email@gmail.com
-   EMAIL_PASSWORD=your_app_password_here
+   EMAIL_PROVIDER=sendgrid
+   SENDGRID_API_KEY=your_sendgrid_api_key
    EMAIL_FROM=noreply@countpluse.com
    
    FRONTEND_URL=http://localhost:3000
@@ -57,7 +56,7 @@ Backend server for Countpluse user registration, email verification, and authent
 1. Enable 2-factor authentication on your Gmail account
 2. Generate an App Password: https://myaccount.google.com/apppasswords
 3. Select "Mail" and "Windows Computer" (or your device)
-4. Copy the generated 16-character password to `EMAIL_PASSWORD` in `.env`
+4. Copy the SendGrid API key to `SENDGRID_API_KEY` in `.env`
 
 ### MongoDB Setup
 
@@ -406,9 +405,8 @@ class AuthService {
 | `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/countpluse` |
 | `JWT_SECRET` | Secret key for JWT | `your_secret_key` |
 | `JWT_EXPIRE` | JWT token expiration | `7d` |
-| `EMAIL_SERVICE` | Email provider | `gmail` |
-| `EMAIL_USER` | Email account username | `your_email@gmail.com` |
-| `EMAIL_PASSWORD` | Email account password/app password | `app_password` |
+| `EMAIL_PROVIDER` | Email provider (`sendgrid` or `smtp`) | `sendgrid` |
+| `SENDGRID_API_KEY` | SendGrid API key | `SG...` |
 | `EMAIL_FROM` | From email address | `noreply@countpluse.com` |
 | `FRONTEND_URL` | Frontend base URL | `http://localhost:3000` |
 | `NODE_ENV` | Environment | `development` or `production` |
@@ -421,7 +419,7 @@ class AuthService {
 - Verify MongoDB credentials if using Atlas
 
 **Email Not Sending:**
-- Check EMAIL_USER and EMAIL_PASSWORD
+- Check SENDGRID_API_KEY
 - Verify Gmail app password (not regular password)
 - Ensure "Less secure apps" is enabled (if not using app password)
 

@@ -40,19 +40,18 @@ npm install
 # Copy environment file
 cp .env.example .env
 
-# Edit .env with your Gmail credentials and MongoDB Atlas URI
-# (See README.md for Gmail setup instructions)
+# Edit .env with your SendGrid API key and MongoDB Atlas URI
+# (See README.md for SendGrid setup instructions)
 nano .env
 ```
 
 ---
 
-## 3. Gmail Configuration
+## 3. SendGrid Configuration
 
-1. Go to https://myaccount.google.com/apppasswords
-2. Select "Mail" and "Windows Computer"
-3. Copy the 16-character password
-4. Paste into `.env` as `EMAIL_PASSWORD`
+1. Create a SendGrid account and verify a Sender Identity
+2. Create an API key in SendGrid
+3. Paste into `.env` as `SENDGRID_API_KEY`
 
 ---
 

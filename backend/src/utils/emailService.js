@@ -1,12 +1,26 @@
 const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
-const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
+const emailProvider = (process.env.EMAIL_PROVIDER || 'sendgrid').toLowerCase();
+
+if (emailProvider === 'sendgrid') {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('SENDGRID_API_KEY is not set. Email sending will fail.');
+  } else {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  }
+}
+
+const transporter =
+  emailProvider === 'smtp'
+    ? nodemailer.createTransport({
+        service: process.env.EMAIL_SERVICE || 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      })
+    : null;
 
 // Send verification email
 const sendVerificationEmail = async (user, verificationUrl) => {
@@ -57,7 +71,11 @@ const sendVerificationEmail = async (user, verificationUrl) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    if (emailProvider === 'sendgrid') {
+      await sgMail.send(mailOptions);
+    } else {
+      await transporter.sendMail(mailOptions);
+    }
     console.log(`Verification email sent to ${user.email}`);
     return true;
   } catch (error) {
@@ -107,7 +125,11 @@ const sendLoginLinkEmail = async (user, loginUrl) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    if (emailProvider === 'sendgrid') {
+      await sgMail.send(mailOptions);
+    } else {
+      await transporter.sendMail(mailOptions);
+    }
     console.log(`Login email sent to ${user.email}`);
     return true;
   } catch (error) {
@@ -155,7 +177,11 @@ const sendOtpEmail = async (user, otpCode) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    if (emailProvider === 'sendgrid') {
+      await sgMail.send(mailOptions);
+    } else {
+      await transporter.sendMail(mailOptions);
+    }
     console.log(`OTP email sent to ${user.email}`);
     return true;
   } catch (error) {

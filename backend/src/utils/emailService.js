@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
 
-const emailProvider = (process.env.EMAIL_PROVIDER || 'sendgrid').toLowerCase();
+const emailProvider = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
 
 if (emailProvider === 'sendgrid') {
   if (!process.env.SENDGRID_API_KEY) {

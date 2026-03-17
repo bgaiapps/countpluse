@@ -1,23 +1,48 @@
 require('dotenv').config();
-const connectDB = require('./config/database');
+const { connectDB } = require('./config/database');
+const env = require('./config/env');
 const app = require('./app');
 
-const PORT = process.env.PORT || 5000;
+let server;
 
 const startServer = async () => {
-  // Connect to MongoDB (non-blocking with timeout)
-  connectDB().catch(err => {
-    console.error('⚠️  DB connection error:', err.message);
+  if (env.isProduction) {
+    await connectDB();
+  } else {
+    connectDB().catch(err => {
+      console.error('DB connection error:', err.message);
+    });
+  }
+
+  server = app.listen(env.port, () => {
+    console.log(`Server running on port ${env.port}`);
+    console.log(`Environment: ${env.nodeEnv}`);
   });
 
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  return server;
+};
+
+const shutdown = (signal) => {
+  console.log(`${signal} received, shutting down gracefully`);
+  if (!server) {
+    process.exit(0);
+  }
+  server.close(() => {
+    process.exit(0);
   });
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000).unref();
 };
 
 if (require.main === module) {
-  startServer();
+  startServer().catch(error => {
+    console.error('Startup failure:', error.message);
+    process.exit(1);
+  });
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 module.exports = { app, startServer };

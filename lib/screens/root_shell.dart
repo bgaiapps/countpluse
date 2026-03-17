@@ -3,6 +3,7 @@ import 'home_screen.dart';
 import 'summary_screen.dart';
 import 'settings_screen.dart';
 import '../services/navigation_service.dart';
+import '../theme/app_theme.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -24,30 +25,40 @@ class _RootShellState extends State<RootShell> {
       valueListenable: navIndexNotifier,
       builder: (context, idx, _) {
         return Scaffold(
+          backgroundColor: AppColors.backgroundDark,
           body: _pages[idx],
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: idx,
-            onTap: (i) => navIndexNotifier.value = i,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.touch_app),
-                label: 'Home',
+          bottomNavigationBar: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.backgroundDark,
+              border: Border(
+                top: BorderSide(color: AppColors.cardBorder, width: 1),
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.bar_chart),
-                label: 'Summary',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings),
-                label: 'Settings',
-              ),
-            ],
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Colors.grey,
-            backgroundColor:
-                Theme.of(context).bottomNavigationBarTheme.backgroundColor ??
-                Theme.of(context).colorScheme.surface,
-            type: BottomNavigationBarType.fixed,
+            ),
+            child: BottomNavigationBar(
+              currentIndex: idx,
+              onTap: (i) => navIndexNotifier.value = i,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.touch_app),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.bar_chart),
+                  label: 'Summary',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
+              selectedItemColor: AppColors.textPrimary,
+              unselectedItemColor: AppColors.textPrimary,
+              backgroundColor: AppColors.backgroundDark,
+              type: BottomNavigationBarType.fixed,
+              elevation: 0,
+              selectedFontSize: 15,
+              unselectedFontSize: 15,
+            ),
           ),
         );
       },

@@ -39,6 +39,13 @@ backend/.env
 .env
 .env.example
 
+# Project-local notes, plans, and scratch files
+GOOGLE_PLAY_STORE_PLAN.md
+verify_user.js
+test/code.html
+*.bak
+*.orig
+
 # Symbolication related
 app.*.symbols
 

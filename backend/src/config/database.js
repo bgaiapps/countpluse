@@ -1,12 +1,9 @@
 const mongoose = require('mongoose');
+const env = require('./env');
 
 const connectDB = async () => {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/countpluse';
-
   try {
-    const connection = await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    const connection = await mongoose.connect(env.mongoUri, {
       serverSelectionTimeoutMS: 3000,
       socketTimeoutMS: 5000,
       connectTimeoutMS: 3000,
@@ -21,4 +18,17 @@ const connectDB = async () => {
   }
 };
 
-module.exports = connectDB;
+const getDatabaseStatus = () => {
+  switch (mongoose.connection.readyState) {
+    case 1:
+      return 'connected';
+    case 2:
+      return 'connecting';
+    case 3:
+      return 'disconnecting';
+    default:
+      return 'disconnected';
+  }
+};
+
+module.exports = { connectDB, getDatabaseStatus };

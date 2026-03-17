@@ -2,47 +2,39 @@ import 'package:flutter/material.dart';
 
 /// App Colors - Centralized color palette
 class AppColors {
-  // Primary Colors
-  static const Color primary = Color(0xFFFFBF00); // Tailwind primary (#FFBF00)
-  static const Color primaryLight = Color(0xFFFFD24D);
-  static const Color primaryDark = Color(0xFFF7A700);
+  // Figma palette: Mango popsicle
+  static const Color primary = Color(0xFFF27430);
+  static const Color primaryLight = Color(0xFFF2E829);
+  static const Color primaryDark = Color(0xFFF2B949);
 
-  // Background Colors
-  static const Color backgroundDark = Color(
-    0xFF1A3A2A,
-  ); // Tailwind background-main (#1A3A2A)
-  static const Color backgroundDarker = Color(0xFF0F2B22);
-  static const Color surface = Color(0xFF2A4A3A); // Tailwind card-bg (#2A4A3A)
+  static const Color backgroundDark = Color(0xFFF2E829);
+  static const Color backgroundDarker = Color(0xFFEDD377);
+  static const Color surface = Color(0xFFF2E829);
 
-  // Card Colors
-  static const Color cardBackground = Color(0xFF2A4A3A); // Tailwind card-bg
-  static const Color cardBorder = Color(0xFF4A5A4A); // Tailwind grid-line
+  static const Color cardBackground = Color(0xFFEDD377);
+  static const Color cardBorder = Color(0xFFF2B949);
 
-  // Text Colors
-  static const Color textPrimary = Color(
-    0xFFF0F0E0,
-  ); // Tailwind text-main (#F0F0E0)
-  static const Color textSecondary = Color(
-    0xFF7A8A7A,
-  ); // Tailwind text-secondary (#7A8A7A)
-  static const Color textTertiary = Color(0xFF6B7A6B);
+  static const Color textPrimary = Color(0xFF111111);
+  static const Color textSecondary = Color(0xFF3A3A3A);
+  static const Color textTertiary = Color(0xFF6A6A6A);
 
-  // Status Colors
-  static const Color success = Color(0xFF8BC34A); // Tailwind trend-up (#8BC34A)
-  static const Color danger = Color(
-    0xFFB03A2A,
-  ); // Tailwind trend-down (#B03A2A)
-  static const Color warning = Color(0xFFFF9500);
-  static const Color info = Color(0xFF00B4D8); // Blue
+  static const Color success = Color(0xFF188A63);
+  static const Color danger = Color(0xFFF27430);
+  static const Color warning = Color(0xFFFF8A00);
+  static const Color info = Color(0xFF1B6FA8);
 
-  // Semantic Colors
-  static const Color divider = Color(0xFF4A5A4A); // Tailwind grid-line
-  static const Color disabled = Color(0xFF4B5563);
+  static const Color divider = Color(0xFFEDD377);
+  static const Color disabled = Color(0xFFB59D56);
 
-  // Gradient Colors
   static const List<Color> yellowGradient = [
-    Color(0xFFFFBF00),
-    Color(0xFFFFD24D),
+    Color(0xFFF2B949),
+    Color(0xFFF2E829),
+  ];
+  static const List<Color> sunriseGradient = [
+    Color(0xFFFDF3C4),
+    Color(0xFFEDD377),
+    Color(0xFFF2E829),
+    Color(0xFFF27430),
   ];
 }
 
@@ -239,29 +231,49 @@ class AppShadows {
   );
 }
 
+class AppDecorations {
+  static const BoxDecoration pageBackground = BoxDecoration(
+    color: AppColors.backgroundDark,
+  );
+}
+
+class AppPageBackground extends StatelessWidget {
+  const AppPageBackground({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: AppDecorations.pageBackground,
+      child: child,
+    );
+  }
+}
+
 /// App Theme - Complete Material theme configuration
 class AppTheme {
   static final ThemeData theme = ThemeData(
     useMaterial3: true,
     fontFamily: 'Inter',
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     primaryColor: AppColors.primary,
     scaffoldBackgroundColor: AppColors.backgroundDark,
-    colorScheme: const ColorScheme.dark(
+    colorScheme: const ColorScheme.light(
       primary: AppColors.primary,
-      secondary: AppColors.success,
+      secondary: AppColors.danger,
       surface: AppColors.surface,
       error: AppColors.danger,
-      onPrimary: AppColors.backgroundDark,
-      onSecondary: AppColors.textPrimary,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
       onSurface: AppColors.textPrimary,
-      onError: AppColors.textPrimary,
+      onError: Colors.white,
     ),
     cardColor: AppColors.cardBackground,
     dividerColor: AppColors.divider,
     disabledColor: AppColors.disabled,
     appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: true,
       titleTextStyle: AppTypography.titleLarge,
@@ -294,8 +306,9 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.backgroundDark,
-        elevation: 0,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shadowColor: Color(0x1AF27430),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -319,7 +332,7 @@ class AppTheme {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
-        side: const BorderSide(color: AppColors.primary),
+        side: BorderSide.none,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -332,7 +345,7 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surface,
+      fillColor: AppColors.cardBackground,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
@@ -366,7 +379,9 @@ class AppTheme {
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.cardBackground,
       selectedColor: AppColors.primary,
-      labelStyle: AppTypography.labelMedium,
+      labelStyle: AppTypography.labelMedium.copyWith(
+        color: AppColors.textPrimary,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.full),
         side: const BorderSide(color: AppColors.cardBorder),
@@ -377,7 +392,17 @@ class AppTheme {
       selectedItemColor: AppColors.primary,
       unselectedItemColor: AppColors.textSecondary,
       type: BottomNavigationBarType.fixed,
-      elevation: 0,
+      elevation: 8,
+      selectedLabelStyle: TextStyle(
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w800,
+        fontSize: 15,
+      ),
+      unselectedLabelStyle: TextStyle(
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w700,
+        fontSize: 15,
+      ),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.cardBackground,

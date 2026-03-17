@@ -1,4 +1,12 @@
 const CountRecord = require('../models/CountRecord');
+const isProduction = process.env.NODE_ENV === 'production';
+const MAX_COUNT = 9999;
+
+const errorBody = (message, error) => ({
+  success: false,
+  message,
+  error: !isProduction && error ? error.message : undefined,
+});
 
 const normalizeDateKey = (value) => {
   const date = value ? new Date(value) : new Date();
@@ -21,15 +29,25 @@ const upsertCount = async (req, res) => {
       });
     }
 
+    const parsedCount = Number.parseInt(req.body.count, 10);
+    if (!Number.isInteger(parsedCount) || parsedCount < 0 || parsedCount > MAX_COUNT) {
+      return res.status(400).json({
+        success: false,
+        message: `Count must be an integer between 0 and ${MAX_COUNT}`,
+      });
+    }
+
+    let targetLabel = '';
+    if (typeof req.body.targetLabel === 'string') {
+      targetLabel = req.body.targetLabel.trim().slice(0, 100);
+    }
+
     const update = {
       userId: req.userId,
       date: dateKey,
-      count: req.body.count,
+      count: parsedCount,
+      targetLabel,
     };
-
-    if (typeof req.body.targetLabel === 'string') {
-      update.targetLabel = req.body.targetLabel.trim();
-    }
 
     const record = await CountRecord.findOneAndUpdate(
       { userId: req.userId, date: dateKey },
@@ -44,11 +62,7 @@ const upsertCount = async (req, res) => {
     });
   } catch (error) {
     console.error('Upsert count error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error saving count data',
-      error: error.message,
-    });
+    return res.status(500).json(errorBody('Error saving count data', error));
   }
 };
 
@@ -72,11 +86,7 @@ const getLatestCount = async (req, res) => {
     });
   } catch (error) {
     console.error('Get latest count error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error fetching count data',
-      error: error.message,
-    });
+    return res.status(500).json(errorBody('Error fetching count data', error));
   }
 };
 
@@ -104,7 +114,10 @@ const getCountHistory = async (req, res) => {
       if (toKey) query.date.$lte = toKey;
     }
 
-    const limitValue = limit ? Math.min(parseInt(limit, 10), 366) : 30;
+    const parsedLimit = Number.parseInt(limit, 10);
+    const limitValue = Number.isInteger(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 366)
+      : 30;
 
     const records = await CountRecord.find(query).sort({ date: -1 }).limit(limitValue).lean();
 
@@ -114,11 +127,7 @@ const getCountHistory = async (req, res) => {
     });
   } catch (error) {
     console.error('Get count history error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error fetching count history',
-      error: error.message,
-    });
+    return res.status(500).json(errorBody('Error fetching count history', error));
   }
 };
 

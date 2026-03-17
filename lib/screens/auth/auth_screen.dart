@@ -27,12 +27,39 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
+  static final RegExp _emailPattern = RegExp(
+    r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
+  );
+  static final RegExp _phonePattern = RegExp(r'^\+?[0-9 ]{7,15}$');
+
+  String? _validateEmail(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!_emailPattern.hasMatch(normalized)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      return 'Please enter your phone number';
+    }
+    if (!_phonePattern.hasMatch(normalized)) {
+      return 'Please enter a valid phone number';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           elevation: 0,
           backgroundColor: Colors.transparent,
@@ -53,11 +80,10 @@ class _AuthScreenState extends State<AuthScreen> {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _buildLogin(context),
-            _buildRegister(context),
-          ],
+        body: AppPageBackground(
+          child: TabBarView(
+            children: [_buildLogin(context), _buildRegister(context)],
+          ),
         ),
       ),
     );
@@ -72,7 +98,7 @@ class _AuthScreenState extends State<AuthScreen> {
           Text('Welcome back', style: AppTypography.headlineSmall),
           const SizedBox(height: 6),
           Text(
-            'Enter your username or email and we will send you a 4 digit OTP.',
+            'Enter your email and we will send you a 4 digit OTP.',
             style: AppTypography.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -81,7 +107,7 @@ class _AuthScreenState extends State<AuthScreen> {
           TextField(
             controller: _loginController,
             decoration: const InputDecoration(
-              labelText: 'Username / Email',
+              labelText: 'Email',
               hintText: 'name@example.com',
             ),
             textInputAction: TextInputAction.done,
@@ -93,36 +119,40 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: _isLoginLoading
                   ? null
                   : () async {
-                final value = _loginController.text.trim();
-                if (value.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a username or email')),
-                  );
-                  return;
-                }
-                setState(() => _isLoginLoading = true);
-                try {
-                  final user = await AuthService.login(email: value);
-                  if (!context.mounted) return;
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => OtpScreen(
-                        destination: user.email.isNotEmpty ? user.email : value,
-                        name: user.name,
-                        email: user.email.isNotEmpty ? user.email : value,
-                        phone: user.phone,
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.toString())),
-                  );
-                } finally {
-                  if (mounted) setState(() => _isLoginLoading = false);
-                }
-              },
+                      final value = _loginController.text.trim();
+                      final emailError = _validateEmail(value);
+                      if (emailError != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(emailError)),
+                        );
+                        return;
+                      }
+                      setState(() => _isLoginLoading = true);
+                      try {
+                        final user = await AuthService.login(email: value);
+                        if (!context.mounted) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => OtpScreen(
+                              isRegistrationFlow: false,
+                              destination: user.email.isNotEmpty
+                                  ? user.email
+                                  : value,
+                              name: user.name,
+                              email: user.email.isNotEmpty ? user.email : value,
+                              phone: user.phone,
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      } finally {
+                        if (mounted) setState(() => _isLoginLoading = false);
+                      }
+                    },
               child: _isLoginLoading
                   ? const SizedBox(
                       width: 18,
@@ -178,45 +208,62 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: _isRegisterLoading
                   ? null
                   : () async {
-                final name = _nameController.text.trim();
-                final email = _emailController.text.trim();
-                final phone = _phoneController.text.trim();
-                if (name.isEmpty || email.isEmpty || phone.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill all fields')),
-                  );
-                  return;
-                }
-                setState(() => _isRegisterLoading = true);
-                try {
-                  await AuthService.register(
-                    name: name,
-                    email: email,
-                    phone: phone,
-                  );
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('OTP sent to your email')),
-                  );
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => OtpScreen(
-                        destination: email,
-                        name: name,
-                        email: email,
-                        phone: phone,
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.toString())),
-                  );
-                } finally {
-                  if (mounted) setState(() => _isRegisterLoading = false);
-                }
-              },
+                      final name = _nameController.text.trim();
+                      final email = _emailController.text.trim();
+                      final phone = _phoneController.text.trim();
+                      if (name.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter your name')),
+                        );
+                        return;
+                      }
+                      final emailError = _validateEmail(email);
+                      if (emailError != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(emailError)),
+                        );
+                        return;
+                      }
+                      final phoneError = _validatePhone(phone);
+                      if (phoneError != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(phoneError)),
+                        );
+                        return;
+                      }
+                      setState(() => _isRegisterLoading = true);
+                      try {
+                        await AuthService.register(
+                          name: name,
+                          email: email,
+                          phone: phone,
+                        );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('OTP sent to your email'),
+                          ),
+                        );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => OtpScreen(
+                              isRegistrationFlow: true,
+                              destination: email,
+                              name: name,
+                              email: email,
+                              phone: phone,
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      } finally {
+                        if (mounted) setState(() => _isRegisterLoading = false);
+                      }
+                    },
               child: _isRegisterLoading
                   ? const SizedBox(
                       width: 18,

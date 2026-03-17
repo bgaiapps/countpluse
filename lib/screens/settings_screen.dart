@@ -1,7 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'auth/auth_screen.dart';
+import '../services/app_settings_service.dart';
 import '../services/navigation_service.dart';
 import '../services/app_state.dart';
+import '../services/profile_photo_service.dart';
+import '../services/session_service.dart';
+import '../services/wallpaper_service.dart';
 import '../theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -12,26 +21,32 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late bool _darkMode;
-  late bool _reminders;
   late int _dailyGoal;
+  int _milestoneGoal = 1000;
   late String _countTarget;
   late bool _isGuest;
+  String? _wallpaperPath;
+  String? _profilePhotoPath;
 
   @override
   void initState() {
     super.initState();
-    _darkMode = darkModeNotifier.value;
-    _reminders = remindersNotifier.value;
     _dailyGoal = dailyGoalNotifier.value;
+    _milestoneGoal = milestoneGoalNotifier.value;
     _countTarget = countTargetNotifier.value;
     _isGuest = isGuestNotifier.value;
+    _wallpaperPath = wallpaperPathNotifier.value;
+    _profilePhotoPath = profilePhotoPathNotifier.value;
     isGuestNotifier.addListener(_syncGuestState);
+    wallpaperPathNotifier.addListener(_syncWallpaper);
+    profilePhotoPathNotifier.addListener(_syncProfilePhoto);
   }
 
   @override
   void dispose() {
     isGuestNotifier.removeListener(_syncGuestState);
+    wallpaperPathNotifier.removeListener(_syncWallpaper);
+    profilePhotoPathNotifier.removeListener(_syncProfilePhoto);
     super.dispose();
   }
 
@@ -40,18 +55,241 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isGuest = isGuestNotifier.value);
   }
 
+  void _syncWallpaper() {
+    if (!mounted) return;
+    setState(() => _wallpaperPath = wallpaperPathNotifier.value);
+  }
+
+  void _syncProfilePhoto() {
+    if (!mounted) return;
+    setState(() => _profilePhotoPath = profilePhotoPathNotifier.value);
+  }
+
+  void _showEditProfileDialog() {
+    final nameController = TextEditingController(text: userNameNotifier.value);
+    final emailController = TextEditingController(
+      text: userEmailNotifier.value,
+    );
+    final phoneController = TextEditingController(
+      text: userPhoneNotifier.value,
+    );
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Profile'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Phone'),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                SessionService.updateProfile(
+                  name: nameController.text.trim(),
+                  email: emailController.text.trim(),
+                  phone: phoneController.text.trim(),
+                );
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated')),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+    final dir = await getApplicationDocumentsDirectory();
+    final ext = image.path.split('.').last;
+    final targetPath =
+        '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.$ext';
+    final saved = await File(image.path).copy(targetPath);
+    await ProfilePhotoService.setProfilePhoto(saved.path);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profile photo updated')));
+  }
+
+  Future<void> _clearProfilePhoto() async {
+    await ProfilePhotoService.setProfilePhoto(null);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profile photo removed')));
+  }
+
+  Future<void> _showProfilePhotoOptions() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Take photo'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    final picker = ImagePicker();
+                    final image = await picker.pickImage(
+                      source: ImageSource.camera,
+                    );
+                    if (image == null) return;
+                    final dir = await getApplicationDocumentsDirectory();
+                    final ext = image.path.split('.').last;
+                    final targetPath =
+                        '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.$ext';
+                    final saved = await File(image.path).copy(targetPath);
+                    await ProfilePhotoService.setProfilePhoto(saved.path);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(content: Text('Profile photo updated')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Choose from gallery'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _pickProfilePhoto();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: const Text('Use default avatar'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _clearProfilePhoto();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickWallpaper(ImageSource source) async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: source);
+    if (image == null) return;
+    final dir = await getApplicationDocumentsDirectory();
+    final ext = image.path.split('.').last;
+    final targetPath =
+        '${dir.path}/wallpaper_${DateTime.now().millisecondsSinceEpoch}.$ext';
+    final saved = await File(image.path).copy(targetPath);
+    await WallpaperService.setWallpaper(saved.path);
+    if (!mounted) return;
+    setState(() => _wallpaperPath = saved.path);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Wallpaper updated')));
+  }
+
+  Future<void> _showWallpaperOptions() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Take photo'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _pickWallpaper(ImageSource.camera);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Choose from gallery'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _pickWallpaper(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _clearWallpaper() async {
+    await WallpaperService.setWallpaper(null);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Wallpaper cleared')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.backgroundDark,
         centerTitle: true,
         title: Text('Settings', style: AppTypography.titleLarge),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
+          icon: const Icon(
+            Icons.arrow_back_ios,
+            color: AppColors.textPrimary,
+          ),
           onPressed: () {
             if (Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
@@ -67,16 +305,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SnackBar(content: Text('No new notifications')),
               );
             },
-            icon: const Icon(Icons.notifications),
+            icon: const Icon(
+              Icons.notifications,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: AppPageBackground(
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               const SizedBox(height: 8),
               Text(
                 'Profile',
@@ -86,7 +331,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              _isGuest ? _buildGuestProfileCard(context) : _buildProfileCard(context),
+              _isGuest
+                  ? _buildGuestProfileCard(context)
+                  : _buildProfileCard(context),
 
               const SizedBox(height: 18),
               Text(
@@ -105,47 +352,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildSettingTile(
-                      icon: Icons.dark_mode,
-                      iconColor: const Color(0xFF75FB4C),
-                      title: 'Dark Mode',
-                      titleStyle: AppTypography.titleSmall,
-                      trailing: Switch(
-                        value: _darkMode,
-                        onChanged: (v) {
-                          setState(() => _darkMode = v);
-                          darkModeNotifier.value = v;
-                        },
-                      ),
-                    ),
-                    _buildDivider(),
-
-                    _buildSettingTile(
-                      icon: Icons.event_available,
-                      title: 'Daily Reminders',
-                      titleStyle: AppTypography.titleSmall,
-                      iconColor: const Color(0xFF75FB4C),
-                      trailing: Switch(
-                        value: _reminders,
-                        onChanged: (v) {
-                          setState(() => _reminders = v);
-                          remindersNotifier.value = v;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Reminders ${v ? 'enabled' : 'disabled'}',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    _buildDivider(),
                     // What are you counting (free text input)
                     InkWell(
-                      onTap: _isGuest
-                          ? null
-                          : () async {
+                      onTap: () async {
                               String temp = _countTarget;
                               await showDialog<void>(
                                 context: context,
@@ -199,9 +408,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               }
                                               setState(() {
                                                 _countTarget = value;
-                                                countTargetNotifier.value =
-                                                    value;
                                               });
+                                              AppSettingsService.setCountTarget(
+                                                value,
+                                              );
                                               Navigator.of(ctx).pop();
                                             },
                                             child: const Text('Save'),
@@ -213,49 +423,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 },
                               );
                             },
-                      child: Opacity(
-                        opacity: _isGuest ? 0.5 : 1,
-                        child: _buildSettingTile(
+                      child: _buildSettingTile(
                           icon: Icons.people,
                           title: 'What are you counting?',
                           titleStyle: AppTypography.titleSmall,
-                          iconColor: const Color(0xFF75FB4C),
+                          iconBg: AppColors.primary.withValues(alpha: 0.18),
+                          iconColor: AppColors.primary,
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 _countTarget,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                Icons.edit,
-                                color: AppColors.textSecondary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    _buildDivider(),
-                    // Daily Goal setting (1 - 100000)
-                    InkWell(
-                      onTap: _isGuest ? null : () => _showDailyGoalDialog(context),
-                      child: Opacity(
-                        opacity: _isGuest ? 0.5 : 1,
-                        child: _buildSettingTile(
-                          icon: Icons.flag,
-                          title: 'Daily Goal',
-                          titleStyle: AppTypography.titleSmall,
-                          iconColor: const Color(0xFF75FB4C),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '$_dailyGoal',
-                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -264,43 +444,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ],
                           ),
                         ),
-                      ),
+                    ),
+                    _buildDivider(),
+                    // Daily Goal setting (1 - 100000)
+                    InkWell(
+                      onTap: () => _showDailyGoalDialog(context),
+                      child: _buildSettingTile(
+                          icon: Icons.flag,
+                          title: 'Daily Goal',
+                          titleStyle: AppTypography.titleSmall,
+                          iconBg: AppColors.primary.withValues(alpha: 0.18),
+                          iconColor: AppColors.primary,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$_dailyGoal',
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.edit, color: AppColors.textSecondary),
+                            ],
+                          ),
+                        ),
                     ),
                     _buildDivider(),
                     InkWell(
-                      onTap: _isGuest
-                          ? null
-                          : () {
-                              showDialog<void>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Export Data'),
-                                  content: const Text(
-                                    'Your counting data has been exported to a CSV file.',
-                                  ),
-                                  actions: [
-                                    ElevatedButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(),
-                                      child: const Text('OK'),
-                                    ),
-                                  ],
+                      onTap: _showWallpaperOptions,
+                      child: _buildSettingTile(
+                          icon: Icons.wallpaper,
+                          title: 'Home Wallpaper',
+                          titleStyle: AppTypography.titleSmall,
+                          iconBg: AppColors.primary.withValues(alpha: 0.18),
+                          iconColor: AppColors.primary,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _wallpaperPath == null ? 'Add' : 'Change',
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
                                 ),
-                              );
-                            },
-                      child: Opacity(
-                        opacity: _isGuest ? 0.5 : 1,
-                        child: _buildSettingTile(
-                          icon: Icons.ios_share,
-                          title: 'Data Export',
-                          iconColor: const Color(0xFF75FB4C),
-                          trailing: Icon(
-                            Icons.chevron_right,
-                            color: AppColors.textSecondary,
+                              ),
+                              if (_wallpaperPath != null) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: _clearWallpaper,
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                      ),
                     ),
+                    _buildDivider(),
                   ],
                 ),
               ),
@@ -313,8 +517,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('Sign Out'),
-                        content:
-                            const Text('Are you sure you want to sign out?'),
+                        content: const Text(
+                          'Are you sure you want to sign out?',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
@@ -323,10 +528,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ElevatedButton(
                             onPressed: () {
                               Navigator.of(context).pop();
-                              isGuestNotifier.value = true;
-                              userNameNotifier.value = '';
-                              userEmailNotifier.value = '';
-                              userPhoneNotifier.value = '';
+                              SessionService.clearSession();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Signed out successfully'),
@@ -334,28 +536,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.danger,
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: AppColors.textPrimary,
                             ),
-                            child: const Text(
-                              'Sign Out',
-                              style: TextStyle(color: Colors.white),
-                            ),
+                            child: const Text('Sign Out'),
                           ),
                         ],
                       ),
                     );
                   },
-                  icon: Icon(Icons.logout, color: AppColors.danger),
+                  icon: const Icon(Icons.logout, color: AppColors.primary),
                   label: Text(
                     'Sign Out',
                     style: TextStyle(
-                      color: AppColors.danger,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.04),
-                    elevation: 0,
+                    backgroundColor: AppColors.cardBackground,
+                    foregroundColor: AppColors.textPrimary,
+                    elevation: 1,
                     minimumSize: const Size.fromHeight(56),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -372,29 +573,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-            ],
+                  ],
+                ),
+              ),
+            ),
+            ),
           ),
         ),
-      ),
     );
   }
 
   Widget _buildProfileCard(BuildContext context) {
+    final hasProfilePhoto =
+        _profilePhotoPath != null && _profilePhotoPath!.isNotEmpty;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
+        boxShadow: const [AppShadows.sm],
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 32,
-            backgroundImage: NetworkImage(
-              'https://i.pravatar.cc/150',
+          GestureDetector(
+            onTap: _showProfilePhotoOptions,
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: AppColors.primaryLight,
+                  backgroundImage: hasProfilePhoto
+                      ? FileImage(File(_profilePhotoPath!))
+                      : null,
+                  child: hasProfilePhoto
+                      ? null
+                      : const Icon(Icons.person_outline, size: 32),
+                ),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.cardBackground,
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(Icons.add, size: 14, color: Colors.white),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 12),
@@ -426,19 +655,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Edit profile coming soon'),
-                ),
-              );
-            },
+            onPressed: _showEditProfileDialog,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary.withValues(
-                alpha: 0.1,
-              ),
+              backgroundColor: AppColors.cardBackground,
               foregroundColor: AppColors.primary,
-              elevation: 0,
+              elevation: 1,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -455,16 +676,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
+        boxShadow: const [AppShadows.sm],
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
           const CircleAvatar(
             radius: 32,
-            backgroundColor: Color(0xFF2E3F37),
+            backgroundColor: AppColors.primaryLight,
             child: Icon(Icons.person_outline, size: 32),
           ),
           const SizedBox(width: 12),
@@ -504,47 +723,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDailyGoalDialog(BuildContext context) {
-    int temp = _dailyGoal;
-    final controller = TextEditingController(text: temp.toString());
+    int tempDaily = _dailyGoal;
+    int tempMilestone = _milestoneGoal;
+    final dailyController = TextEditingController(text: tempDaily.toString());
+    final milestoneController = TextEditingController(
+      text: tempMilestone.toString(),
+    );
     showDialog<void>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Set Daily Goal'),
+              title: const Text('Set Goals'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
-                      hintText: 'Enter a number (1 - 100000)',
+                      labelText: 'Daily Goal',
+                      hintText: 'Enter a positive number',
                     ),
-                    controller: controller,
+                    controller: dailyController,
                     onChanged: (v) {
-                      final parsed = int.tryParse(v) ?? temp;
-                      temp = parsed.clamp(1, 100000);
+                      final parsed = int.tryParse(v) ?? tempDaily;
+                      tempDaily = parsed.clamp(1, 1000000);
                       setStateDialog(() {});
                     },
                   ),
                   const SizedBox(height: 12),
-                  Slider(
-                    min: 1,
-                    max: 100000,
-                    divisions: 1000,
-                    value: temp.toDouble().clamp(1, 100000),
+                  TextField(
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Milestone Goal',
+                      hintText: 'Enter a positive number',
+                    ),
+                    controller: milestoneController,
                     onChanged: (v) {
-                      setStateDialog(() {
-                        temp = v.round();
-                        controller.text = temp.toString();
-                        controller.selection = TextSelection.fromPosition(
-                          TextPosition(offset: controller.text.length),
-                        );
-                      });
+                      final parsed = int.tryParse(v) ?? tempMilestone;
+                      tempMilestone = parsed.clamp(1, 100000000);
+                      setStateDialog(() {});
                     },
                   ),
-                  Text('Selected: $temp'),
                 ],
               ),
               actions: [
@@ -554,10 +777,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final newVal = (int.tryParse(controller.text) ?? temp)
-                        .clamp(1, 100000);
-                    setState(() => _dailyGoal = newVal);
-                    dailyGoalNotifier.value = newVal;
+                    final dailyVal =
+                        int.tryParse(dailyController.text) ?? tempDaily;
+                    final milestoneVal =
+                        int.tryParse(milestoneController.text) ?? tempMilestone;
+                    if (dailyVal <= 0 || milestoneVal <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter positive numbers'),
+                        ),
+                      );
+                      return;
+                    }
+                    setState(() {
+                      _dailyGoal = dailyVal;
+                      _milestoneGoal = milestoneVal;
+                    });
+                    AppSettingsService.setDailyGoal(dailyVal);
+                    AppSettingsService.setMilestoneGoal(milestoneVal);
                     Navigator.of(context).pop();
                   },
                   child: const Text('Save'),
@@ -589,7 +826,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: iconBg ?? Colors.transparent,
+              color: iconBg ?? AppColors.primary.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: iconColor ?? Colors.white),

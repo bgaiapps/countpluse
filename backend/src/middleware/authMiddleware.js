@@ -1,18 +1,20 @@
 const { verifyJWT } = require('../utils/tokenGenerator');
+const isProduction = process.env.NODE_ENV === 'production';
 
 const authMiddleware = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const authHeader = req.headers.authorization || '';
+    const [scheme, token] = authHeader.split(' ');
 
-    if (!token) {
+    if (scheme !== 'Bearer' || !token) {
       return res.status(401).json({
         success: false,
-        message: 'No token provided',
+        message: 'Missing or invalid Authorization header',
       });
     }
 
     const decoded = verifyJWT(token);
-    if (!decoded) {
+    if (!decoded || !decoded.userId) {
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired token',
@@ -25,7 +27,7 @@ const authMiddleware = (req, res, next) => {
     res.status(401).json({
       success: false,
       message: 'Authentication failed',
-      error: error.message,
+      error: !isProduction ? error.message : undefined,
     });
   }
 };

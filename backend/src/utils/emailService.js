@@ -22,6 +22,17 @@ const transporter =
       })
     : null;
 
+const sendMail = async (mailOptions, logLabel) => {
+  if (emailProvider === 'sendgrid') {
+    await sgMail.send(mailOptions);
+  } else if (transporter) {
+    await transporter.sendMail(mailOptions);
+  } else {
+    throw new Error('Email provider is not configured');
+  }
+  console.log(`${logLabel} email sent to ${mailOptions.to}`);
+};
+
 // Send verification email
 const sendVerificationEmail = async (user, verificationUrl) => {
   const mailOptions = {
@@ -71,12 +82,7 @@ const sendVerificationEmail = async (user, verificationUrl) => {
   };
 
   try {
-    if (emailProvider === 'sendgrid') {
-      await sgMail.send(mailOptions);
-    } else {
-      await transporter.sendMail(mailOptions);
-    }
-    console.log(`Verification email sent to ${user.email}`);
+    await sendMail(mailOptions, 'Verification');
     return true;
   } catch (error) {
     console.error('Error sending email:', error);
@@ -125,12 +131,7 @@ const sendLoginLinkEmail = async (user, loginUrl) => {
   };
 
   try {
-    if (emailProvider === 'sendgrid') {
-      await sgMail.send(mailOptions);
-    } else {
-      await transporter.sendMail(mailOptions);
-    }
-    console.log(`Login email sent to ${user.email}`);
+    await sendMail(mailOptions, 'Login');
     return true;
   } catch (error) {
     console.error('Error sending login email:', error);
@@ -177,12 +178,7 @@ const sendOtpEmail = async (user, otpCode) => {
   };
 
   try {
-    if (emailProvider === 'sendgrid') {
-      await sgMail.send(mailOptions);
-    } else {
-      await transporter.sendMail(mailOptions);
-    }
-    console.log(`OTP email sent to ${user.email}`);
+    await sendMail(mailOptions, 'OTP');
     return true;
   } catch (error) {
     console.error('Error sending OTP email:', error);

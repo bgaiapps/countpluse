@@ -1,6 +1,18 @@
 const User = require('../models/User');
-const { generateOtpCode, generateVerificationToken, generateJWT } = require('../utils/tokenGenerator');
-const { sendOtpEmail, sendVerificationEmail } = require('../utils/emailService');
+const { generateOtpCode, generateJWT } = require('../utils/tokenGenerator');
+const { sendOtpEmail } = require('../utils/emailService');
+const env = require('../config/env');
+
+const normalizeEmail = value =>
+  typeof value === 'string' ? value.trim().toLowerCase() : '';
+const normalizeText = value => (typeof value === 'string' ? value.trim() : '');
+const normalizeOtp = value =>
+  typeof value === 'string' ? value.replace(/\s+/g, '').trim() : '';
+const errorBody = (message, error) => ({
+  success: false,
+  message,
+  error: !env.isProduction && error ? error.message : undefined,
+});
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -8,9 +20,9 @@ const { sendOtpEmail, sendVerificationEmail } = require('../utils/emailService')
 const register = async (req, res) => {
   try {
     const { name, email, phone } = req.body;
-    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
-    const normalizedName = typeof name === 'string' ? name.trim() : '';
-    const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedName = normalizeText(name);
+    const normalizedPhone = normalizeText(phone);
 
     // Validation
     if (!normalizedName || !normalizedEmail || !normalizedPhone) {
@@ -31,7 +43,7 @@ const register = async (req, res) => {
 
     // Generate OTP (10 minutes by default)
     const otpCode = generateOtpCode();
-    const otpMinutes = Number.parseInt(process.env.OTP_EXPIRE_MINUTES || '10', 10);
+    const otpMinutes = env.otpExpireMinutes;
     const verificationTokenExpires = new Date(Date.now() + otpMinutes * 60 * 1000);
 
     const isExistingUnverified = Boolean(user && !user.isVerified);
@@ -66,7 +78,7 @@ const register = async (req, res) => {
       return res.status(500).json({
         success: false,
         message: 'Failed to send verification email. Please try again.',
-        error: emailError.message,
+        error: !env.isProduction ? emailError.message : undefined,
       });
     }
 
@@ -82,11 +94,7 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error registering user',
-      error: error.message,
-    });
+    res.status(500).json(errorBody('Error registering user', error));
   }
 };
 
@@ -138,11 +146,7 @@ const verifyEmail = async (req, res) => {
     });
   } catch (error) {
     console.error('Verify email error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error verifying email',
-      error: error.message,
-    });
+    res.status(500).json(errorBody('Error verifying email', error));
   }
 };
 
@@ -152,7 +156,7 @@ const verifyEmail = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email } = req.body;
-    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const normalizedEmail = normalizeEmail(email);
 
     if (!normalizedEmail) {
       return res.status(400).json({
@@ -173,7 +177,7 @@ const login = async (req, res) => {
 
     // Generate OTP
     const otpCode = generateOtpCode();
-    const otpMinutes = Number.parseInt(process.env.OTP_EXPIRE_MINUTES || '10', 10);
+    const otpMinutes = env.otpExpireMinutes;
     user.verificationToken = otpCode;
     user.verificationTokenExpires = new Date(Date.now() + otpMinutes * 60 * 1000);
     await user.save();
@@ -193,11 +197,7 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error logging in',
-      error: error.message,
-    });
+    res.status(500).json(errorBody('Error logging in', error));
   }
 };
 
@@ -229,11 +229,7 @@ const getProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Get profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching profile',
-      error: error.message,
-    });
+    res.status(500).json(errorBody('Error fetching profile', error));
   }
 };
 
@@ -243,13 +239,19 @@ const getProfile = async (req, res) => {
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
-    const normalizedOtp = typeof otp === 'string' ? otp.trim() : '';
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedOtp = normalizeOtp(otp);
 
     if (!normalizedEmail || !normalizedOtp) {
       return res.status(400).json({
         success: false,
         message: 'Email and OTP are required',
+      });
+    }
+    if (!/^\d{4,6}$/.test(normalizedOtp)) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP must be 4 to 6 digits',
       });
     }
 
@@ -286,11 +288,7 @@ const verifyOtp = async (req, res) => {
     });
   } catch (error) {
     console.error('Verify OTP error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error verifying OTP',
-      error: error.message,
-    });
+    res.status(500).json(errorBody('Error verifying OTP', error));
   }
 };
 

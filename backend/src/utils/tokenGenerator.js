@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const env = require('../config/env');
 
 // Generate a random verification token
 const generateVerificationToken = () => {
@@ -13,16 +14,16 @@ const generateOtpCode = () => {
 
 // Generate JWT token for authenticated sessions
 const generateJWT = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET || 'your_secret_key', {
-    expiresIn: process.env.JWT_EXPIRE || '7d',
+  return jwt.sign({ userId }, env.jwtSecret, {
+    expiresIn: env.jwtExpire,
   });
 };
 
 // Verify JWT token
 const verifyJWT = (token) => {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
-  } catch (error) {
+    return jwt.verify(token, env.jwtSecret);
+  } catch {
     return null;
   }
 };

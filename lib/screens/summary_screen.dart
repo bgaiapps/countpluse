@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/navigation_service.dart';
 import '../services/counts_service.dart';
+import '../services/app_state.dart';
 import '../theme/app_theme.dart';
 
 const List<String> _weekdayShort = [
@@ -28,8 +29,25 @@ const List<String> _monthShort = [
   'Dec',
 ];
 
+DateTime Function() _nowProvider = DateTime.now;
+
+void setSummaryNowProvider(DateTime Function() provider) {
+  _nowProvider = provider;
+}
+
+void resetSummaryNowProvider() {
+  _nowProvider = DateTime.now;
+}
+
 class SummaryScreen extends StatefulWidget {
-  const SummaryScreen({super.key});
+  const SummaryScreen({
+    super.key,
+    this.initialCounts,
+    this.skipInitialLoad = false,
+  });
+
+  final Map<String, int>? initialCounts;
+  final bool skipInitialLoad;
 
   @override
   State<SummaryScreen> createState() => _SummaryScreenState();
@@ -40,11 +58,37 @@ class _SummaryScreenState extends State<SummaryScreen> {
   Map<String, int> _countMap = {};
   bool _loadingCounts = false;
   String? _loadError;
+  DateTime? _lastLoadedAt;
 
   @override
   void initState() {
     super.initState();
-    _loadCounts();
+    if (widget.initialCounts != null) {
+      _countMap = Map<String, int>.from(widget.initialCounts!);
+      _loadingCounts = false;
+      _loadError = null;
+      _lastLoadedAt = _nowProvider();
+    }
+    if (!widget.skipInitialLoad) {
+      _loadCounts();
+    }
+    navIndexNotifier.addListener(_handleTabChange);
+  }
+
+  @override
+  void dispose() {
+    navIndexNotifier.removeListener(_handleTabChange);
+    super.dispose();
+  }
+
+  void _handleTabChange() {
+    if (navIndexNotifier.value != 1) return;
+    final now = DateTime.now();
+    if (_loadingCounts) return;
+    if (_lastLoadedAt == null ||
+        now.difference(_lastLoadedAt!) > const Duration(seconds: 3)) {
+      _loadCounts();
+    }
   }
 
   Future<void> _loadCounts() async {
@@ -57,6 +101,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
       setState(() {
         _countMap = counts;
         _loadingCounts = false;
+        _lastLoadedAt = DateTime.now();
       });
     } catch (error) {
       setState(() {
@@ -72,7 +117,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
       backgroundColor: AppColors.backgroundDark,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.backgroundDark.withValues(alpha: 0.9),
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         centerTitle: true,
@@ -96,8 +141,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
           child: Container(height: 1, color: AppColors.cardBorder),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
+      body: AppPageBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 96),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,43 +176,31 @@ class _SummaryScreenState extends State<SummaryScreen> {
                   horizontal: 16.0,
                   vertical: 24,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Period Insights',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Export',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Period Insights',
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: _InsightsGrid(),
+                child: _InsightsGrid(
+                  timeframe: _timeframe,
+                  countMap: _countMap,
+                  isLoading: _loadingCounts,
+                ),
               ),
 
               const SizedBox(height: 40),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: const Text(
+                child: Text(
                   'Milestones',
-                  style: TextStyle(
+                  style: AppTypography.headlineSmall.copyWith(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.2,
@@ -177,25 +211,72 @@ class _SummaryScreenState extends State<SummaryScreen> {
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  children: const [
-                    _MilestoneItem(
-                      title: '1,000 Total Tally',
-                      subtitle: 'Achieved 2 days ago',
-                      leadingIcon: Icons.workspace_premium,
-                      enabled: true,
-                    ),
-                    SizedBox(height: 12),
-                    _MilestoneItem(
-                      title: '50 Daily Goal',
-                      subtitle: '8 counts remaining',
-                      leadingIcon: Icons.gps_fixed,
-                      enabled: false,
-                    ),
-                  ],
+                child: ValueListenableBuilder<int>(
+                  valueListenable: dailyGoalNotifier,
+                  builder: (context, dailyGoal, _) {
+                    return ValueListenableBuilder<int>(
+                      valueListenable: milestoneGoalNotifier,
+                      builder: (context, milestoneGoal, _) {
+                        final today = _stripTime(_nowProvider());
+                        final todayCount = _loadingCounts
+                            ? 0
+                            : _lookupCount(today, _countMap);
+                        final remainingDaily = (dailyGoal - todayCount).clamp(
+                          0,
+                          1 << 31,
+                        );
+                        final dailyAchieved = remainingDaily == 0;
+
+                        final totalAllTime = _countMap.values.fold<int>(
+                          0,
+                          (sum, value) => sum + value,
+                        );
+                        final remainingMilestone =
+                            (milestoneGoal - totalAllTime).clamp(0, 1 << 31);
+                        final milestoneAchieved = remainingMilestone == 0;
+
+                        final milestoneDate = _findMilestoneAchievedDate(
+                          milestoneGoal,
+                          _countMap,
+                        );
+                        final milestoneSubtitle = _loadingCounts
+                            ? 'Loading...'
+                            : milestoneAchieved
+                            ? (milestoneDate == null
+                                  ? 'Milestone achieved'
+                                  : 'Milestone achieved ${_formatRelativeDay(milestoneDate)}')
+                            : '${_formatCount(remainingMilestone)} counts remaining';
+                        final dailySubtitle = _loadingCounts
+                            ? 'Loading...'
+                            : dailyAchieved
+                            ? 'Achieved today'
+                            : '${_formatCount(remainingDaily)} counts remaining';
+
+                        return Column(
+                          children: [
+                            _MilestoneItem(
+                              title:
+                                  '${_formatCount(milestoneGoal)} Total Tally',
+                              subtitle: milestoneSubtitle,
+                              leadingIcon: Icons.workspace_premium,
+                              enabled: milestoneAchieved,
+                            ),
+                            const SizedBox(height: 12),
+                            _MilestoneItem(
+                              title: '${_formatCount(dailyGoal)} Daily Goal',
+                              subtitle: dailySubtitle,
+                              leadingIcon: Icons.gps_fixed,
+                              enabled: dailyAchieved,
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -212,7 +293,6 @@ class _TimeframeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = ['Weekly', 'Monthly', '6 Months', 'Yearly'];
-    const activeColor = Color(0xFF3A5A4A);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
@@ -230,7 +310,7 @@ class _TimeframeSelector extends StatelessWidget {
                 alignment: Alignment.center,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
-                  color: active ? activeColor : Colors.transparent,
+                  color: active ? AppColors.primaryDark : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                   boxShadow: active
                       ? [
@@ -245,7 +325,7 @@ class _TimeframeSelector extends StatelessWidget {
                 child: Text(
                   opt,
                   style: TextStyle(
-                    color: active ? AppColors.primary : AppColors.textSecondary,
+                    color: active ? Colors.white : AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
@@ -301,6 +381,7 @@ class _AnalyticsCard extends StatelessWidget {
                 children: [
                   Text(
                     countValue,
+                    key: const Key('summary_total_count'),
                     style: AppTypography.displayMedium.copyWith(
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.5,
@@ -363,9 +444,11 @@ class _MiniBarChart extends StatelessWidget {
     final counts = data.counts;
     final labels = data.labels;
     final activeIndex = data.highlightIndex;
+    final rawMax = counts.isEmpty ? 0 : counts.reduce((a, b) => a > b ? a : b);
+    final maxCount = _niceAxisMax(rawMax);
     return LayoutBuilder(
       builder: (context, constraints) {
-        const labelAreaHeight = 24.0;
+        final labelAreaHeight = timeframe == 'Monthly' ? 30.0 : 24.0;
         final barAreaHeight = (constraints.maxHeight - labelAreaHeight).clamp(
           0,
           constraints.maxHeight,
@@ -392,7 +475,7 @@ class _MiniBarChart extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: List.generate(counts.length, (i) {
-                      final h = (counts[i] / _chartMaxCount).clamp(0.0, 1.0);
+                      final h = (counts[i] / maxCount).clamp(0.0, 1.0);
                       final isActive = i == activeIndex;
                       return Expanded(
                         child: Padding(
@@ -433,6 +516,7 @@ class _MiniBarChart extends StatelessWidget {
                                       ? Text(
                                           labels[i],
                                           textAlign: TextAlign.center,
+                                          softWrap: false,
                                           maxLines: 1,
                                           overflow: TextOverflow.visible,
                                           style: TextStyle(
@@ -443,9 +527,9 @@ class _MiniBarChart extends StatelessWidget {
                                                 ? FontWeight.w700
                                                 : FontWeight.w500,
                                             fontSize: timeframe == 'Monthly'
-                                                ? 9
-                                                : timeframe == '6 Months'
                                                 ? 10
+                                                : timeframe == '6 Months'
+                                                ? 11
                                                 : 11,
                                             height: 1,
                                           ),
@@ -473,7 +557,7 @@ class _MiniBarChart extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '10k',
+                          _formatAxisLabel(maxCount),
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -481,7 +565,7 @@ class _MiniBarChart extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '5k',
+                          _formatAxisLabel((maxCount / 2).round()),
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -499,7 +583,7 @@ class _MiniBarChart extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: labelAreaHeight),
+                  SizedBox(height: labelAreaHeight),
                 ],
               ),
             ),
@@ -526,7 +610,7 @@ class _MiniBarChart extends StatelessWidget {
         return _ChartData(
           counts: _dailyCounts(dates, countMap),
           labels: _labelsForMonthly(dates),
-          groupDividers: const [7, 14, 21, 28],
+          groupDividers: range.groupDividers,
           drawBarDividers: true,
           highlightIndex: range.highlightIndex,
         );
@@ -624,8 +708,6 @@ class _ChartGridPainter extends CustomPainter {
   }
 }
 
-const int _chartMaxCount = 10000;
-
 class _ChartData {
   final List<int> counts;
   final List<String> labels;
@@ -647,7 +729,7 @@ DateTime _stripTime(DateTime value) {
 }
 
 List<DateTime> _buildDailySeries(int days) {
-  final end = _stripTime(DateTime.now());
+  final end = _stripTime(_nowProvider());
   return List.generate(days, (i) {
     final offset = days - 1 - i;
     return end.subtract(Duration(days: offset));
@@ -657,62 +739,38 @@ List<DateTime> _buildDailySeries(int days) {
 class _MonthlyRange {
   final List<DateTime> dates;
   final int highlightIndex;
+  final List<int> groupDividers;
 
-  const _MonthlyRange({required this.dates, required this.highlightIndex});
+  const _MonthlyRange({
+    required this.dates,
+    required this.highlightIndex,
+    required this.groupDividers,
+  });
 }
 
 _MonthlyRange _buildMonthlyRange() {
-  final today = _stripTime(DateTime.now());
-  final start = _firstSundayOfMonth(today);
-  final dates = List.generate(35, (i) => start.add(Duration(days: i)));
-  var highlightIndex = dates.lastIndexWhere((d) => !d.isAfter(today));
-  if (highlightIndex < 0) {
-    highlightIndex = dates.length - 1;
+  final end = _stripTime(_nowProvider());
+  final start = end.subtract(const Duration(days: 27));
+  const days = 28;
+  final dates = List.generate(days, (i) => start.add(Duration(days: i)));
+  final highlightIndex = dates.length - 1;
+  final dividers = <int>[];
+  for (var i = 7; i < dates.length; i += 7) {
+    dividers.add(i);
   }
-  return _MonthlyRange(dates: dates, highlightIndex: highlightIndex);
-}
-
-DateTime _startOfWeek(DateTime date) {
-  final offset = date.weekday % 7;
-  return date.subtract(Duration(days: offset));
-}
-
-DateTime _firstSundayOfMonth(DateTime date) {
-  final firstDay = DateTime(date.year, date.month, 1);
-  final offset = (DateTime.sunday - firstDay.weekday) % 7;
-  return firstDay.add(Duration(days: offset));
+  return _MonthlyRange(
+    dates: dates,
+    highlightIndex: highlightIndex,
+    groupDividers: dividers,
+  );
 }
 
 List<int> _dailyCounts(List<DateTime> dates, Map<String, int> countMap) {
-  final today = _stripTime(DateTime.now());
+  final today = _stripTime(_nowProvider());
   return dates.map((date) {
     if (date.isAfter(today)) return 0;
     return _lookupCount(date, countMap);
   }).toList();
-}
-
-int _countForDate(DateTime date) {
-  return 0;
-}
-
-int _averageCountForRange(
-  DateTime start,
-  DateTime end,
-  DateTime today,
-  Map<String, int> countMap,
-) {
-  if (start.isAfter(today)) return 0;
-  var current = start;
-  var total = 0;
-  var days = 0;
-  final last = end.isAfter(today) ? today : end;
-  while (!current.isAfter(last)) {
-    total += _lookupCount(current, countMap);
-    days += 1;
-    current = current.add(const Duration(days: 1));
-  }
-  if (days == 0) return 0;
-  return (total / days).round().clamp(0, _chartMaxCount);
 }
 
 List<String> _labelsForWeekly(List<DateTime> dates) {
@@ -720,66 +778,50 @@ List<String> _labelsForWeekly(List<DateTime> dates) {
 }
 
 List<String> _labelsForMonthly(List<DateTime> dates) {
-  return dates
-      .map((date) => date.weekday == DateTime.sunday ? '${date.day}' : '')
-      .toList();
+  return dates.map((date) {
+    if (date.weekday != DateTime.sunday) return '';
+    return '${date.day}-${_monthShort[date.month - 1]}';
+  }).toList();
 }
 
 _ChartData _buildSixMonthBuckets(Map<String, int> countMap) {
-  final today = _stripTime(DateTime.now());
-  final currentMonthStart = DateTime(today.year, today.month, 1);
-  final monthStarts = List.generate(
-    6,
-    (i) => _shiftMonth(currentMonthStart, i - 5),
-  );
-
+  final today = _stripTime(_nowProvider());
   final counts = <int>[];
   final labels = <String>[];
-  var highlightIndex = 0;
-  var foundHighlight = false;
+  final endMonth = DateTime(today.year, today.month, 1);
+  final startMonth = _shiftMonth(endMonth, -5);
 
-  for (var m = 0; m < monthStarts.length; m++) {
-    final monthStart = monthStarts[m];
-    final daysInMonth = _daysInMonth(monthStart.year, monthStart.month);
-    for (var bucket = 0; bucket < 4; bucket++) {
-      final startDay = 1 + (bucket * daysInMonth ~/ 4);
-      final endDay = ((bucket + 1) * daysInMonth ~/ 4);
-      final rangeStart = DateTime(monthStart.year, monthStart.month, startDay);
-      final rangeEnd = DateTime(monthStart.year, monthStart.month, endDay);
-      counts.add(_averageCountForRange(rangeStart, rangeEnd, today, countMap));
-      labels.add(bucket == 0 ? _monthShort[monthStart.month - 1] : '');
-      if (monthStart.year == today.year &&
-          monthStart.month == today.month &&
-          today.day >= startDay &&
-          today.day <= endDay) {
-        highlightIndex = counts.length - 1;
-        foundHighlight = true;
-      }
+  for (var i = 0; i < 6; i++) {
+    final currentMonth = _shiftMonth(startMonth, i);
+    counts.add(0);
+    labels.add(_monthShort[currentMonth.month - 1]);
+  }
+
+  for (final entry in countMap.entries) {
+    final parsed = _parseDateKey(entry.key);
+    if (parsed == null) continue;
+    final date = _stripTime(parsed);
+    if (date.isBefore(startMonth) || date.isAfter(today)) continue;
+    final monthIndex =
+        (date.year - startMonth.year) * 12 + (date.month - startMonth.month);
+    if (monthIndex >= 0 && monthIndex < counts.length) {
+      counts[monthIndex] += entry.value;
     }
   }
 
-  return _ChartData(
-    counts: counts,
-    labels: labels,
-    groupDividers: const [4, 8, 12, 16, 20],
-    drawBarDividers: false,
-    highlightIndex: foundHighlight
-        ? highlightIndex
-        : (counts.isEmpty ? 0 : counts.length - 1),
-  );
-}
-
-_ChartData _buildYearlyBuckets(Map<String, int> countMap) {
-  final today = _stripTime(DateTime.now());
-  final year = today.year;
-  final counts = <int>[];
-  final labels = <String>[];
-
-  for (var month = 1; month <= 12; month++) {
-    final monthStart = DateTime(year, month, 1);
-    final monthEnd = DateTime(year, month, _daysInMonth(year, month));
-    counts.add(_averageCountForRange(monthStart, monthEnd, today, countMap));
-    labels.add(_monthShort[month - 1]);
+  var total = counts.fold<int>(0, (sum, value) => sum + value);
+  if (total == 0) {
+    var current = startMonth;
+    while (!current.isAfter(today)) {
+      final monthIndex =
+          (current.year - startMonth.year) * 12 +
+          (current.month - startMonth.month);
+      if (monthIndex >= 0 && monthIndex < counts.length) {
+        counts[monthIndex] += _lookupCount(current, countMap);
+      }
+      current = current.add(const Duration(days: 1));
+    }
+    total = counts.fold<int>(0, (sum, value) => sum + value);
   }
 
   return _ChartData(
@@ -787,20 +829,74 @@ _ChartData _buildYearlyBuckets(Map<String, int> countMap) {
     labels: labels,
     groupDividers: const [],
     drawBarDividers: true,
-    highlightIndex: today.month - 1,
+    highlightIndex: labels.length - 1,
+  );
+}
+
+_ChartData _buildYearlyBuckets(Map<String, int> countMap) {
+  final today = _stripTime(_nowProvider());
+  final counts = <int>[];
+  final labels = <String>[];
+  final endMonth = DateTime(today.year, today.month, 1);
+  final startMonth = _shiftMonth(endMonth, -11);
+
+  for (var i = 0; i < 12; i++) {
+    final currentMonth = _shiftMonth(startMonth, i);
+    counts.add(0);
+    labels.add(_monthShort[currentMonth.month - 1]);
+  }
+
+  for (final entry in countMap.entries) {
+    final parsed = _parseDateKey(entry.key);
+    if (parsed == null) continue;
+    final date = _stripTime(parsed);
+    if (date.isBefore(startMonth) || date.isAfter(today)) continue;
+    final monthIndex =
+        (date.year - startMonth.year) * 12 + (date.month - startMonth.month);
+    if (monthIndex >= 0 && monthIndex < counts.length) {
+      counts[monthIndex] += entry.value;
+    }
+  }
+
+  var total = counts.fold<int>(0, (sum, value) => sum + value);
+  if (total == 0) {
+    var current = startMonth;
+    final endDate = DateTime(today.year, today.month, today.day);
+    while (!current.isAfter(endDate)) {
+      final monthIndex =
+          (current.year - startMonth.year) * 12 +
+          (current.month - startMonth.month);
+      if (monthIndex >= 0 && monthIndex < counts.length) {
+        counts[monthIndex] += _lookupCount(current, countMap);
+      }
+      current = current.add(const Duration(days: 1));
+    }
+  }
+
+  return _ChartData(
+    counts: counts,
+    labels: labels,
+    groupDividers: const [],
+    drawBarDividers: true,
+    highlightIndex: labels.length - 1,
   );
 }
 
 String _formatRangeForTimeframe(String timeframe) {
-  final end = _stripTime(DateTime.now());
+  final end = _stripTime(_nowProvider());
   DateTime start;
   switch (timeframe) {
     case 'Weekly':
       start = end.subtract(const Duration(days: 6));
       break;
     case 'Monthly':
-      start = _buildMonthlyRange().dates.first;
-      break;
+      final range = _buildMonthlyRange();
+      start = range.dates.first;
+      final endRange = range.dates.last;
+      if (start.year == endRange.year) {
+        return '${_formatMonthDay(start)} – ${_formatMonthDayYear(endRange)}';
+      }
+      return '${_formatMonthDayYear(start)} – ${_formatMonthDayYear(endRange)}';
     case '6 Months':
       start = _shiftMonth(DateTime(end.year, end.month, 1), -5);
       break;
@@ -827,7 +923,7 @@ String _formatMonthDayYear(DateTime date) {
 
 DateTime _shiftMonth(DateTime date, int monthsToAdd) {
   final monthIndex = date.month - 1 + monthsToAdd;
-  final year = date.year + (monthIndex ~/ 12);
+  final year = date.year + (monthIndex / 12).floor();
   var month = monthIndex % 12;
   if (month < 0) {
     month += 12;
@@ -845,9 +941,58 @@ int _daysInMonth(int year, int month) {
 }
 
 int _totalCountForTimeframe(String timeframe, Map<String, int> countMap) {
-  final today = _stripTime(DateTime.now());
+  switch (timeframe) {
+    case '6 Months':
+      return _sumBucketTotals(_buildSixMonthBuckets(countMap).counts);
+    case 'Yearly':
+      return _sumBucketTotals(_buildYearlyBuckets(countMap).counts);
+    default:
+      final range = _getTimeframeRange(timeframe);
+      return _sumCountFromMap(range, countMap);
+  }
+}
+
+int _sumCountOverRange(
+  DateTime start,
+  DateTime end,
+  Map<String, int> countMap,
+) {
+  var current = _stripTime(start);
+  final last = _stripTime(end);
+  var total = 0;
+  while (!current.isAfter(last)) {
+    total += _lookupCount(current, countMap);
+    current = current.add(const Duration(days: 1));
+  }
+  return total;
+}
+
+int _lookupCount(DateTime date, Map<String, int> countMap) {
+  final key = _localDateKey(date);
+  if (countMap.containsKey(key)) {
+    return countMap[key] ?? 0;
+  }
+  return CountsService.getCountForDate(date);
+}
+
+String _localDateKey(DateTime date) {
+  final year = date.year.toString().padLeft(4, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
+}
+
+class _TimeframeRange {
+  final DateTime start;
+  final DateTime end;
+
+  const _TimeframeRange({required this.start, required this.end});
+}
+
+_TimeframeRange _getTimeframeRange(String timeframe) {
+  final today = _stripTime(_nowProvider());
   DateTime start;
-  DateTime end = today;
+  final end = today;
 
   switch (timeframe) {
     case 'Weekly':
@@ -867,27 +1012,141 @@ int _totalCountForTimeframe(String timeframe, Map<String, int> countMap) {
       start = today.subtract(const Duration(days: 6));
   }
 
-  return _sumCountOverRange(start, end, countMap);
+  return _TimeframeRange(start: start, end: end);
 }
 
-int _sumCountOverRange(
-  DateTime start,
-  DateTime end,
+_TimeframeRange _getPreviousTimeframeRange(String timeframe) {
+  final current = _getTimeframeRange(timeframe);
+  final start = _stripTime(current.start);
+  final end = _stripTime(current.end);
+  final days = end.difference(start).inDays + 1;
+  final prevEnd = start.subtract(const Duration(days: 1));
+  final prevStart = prevEnd.subtract(Duration(days: days - 1));
+  return _TimeframeRange(start: prevStart, end: prevEnd);
+}
+
+DateTime? _findMilestoneAchievedDate(
+  int milestoneGoal,
   Map<String, int> countMap,
 ) {
-  var current = _stripTime(start);
-  final last = _stripTime(end);
+  if (milestoneGoal <= 0 || countMap.isEmpty) return null;
+  final entries = <MapEntry<DateTime, int>>[];
+  for (final entry in countMap.entries) {
+    final parsed = _parseDateKey(entry.key);
+    if (parsed == null) continue;
+    entries.add(MapEntry(_stripTime(parsed), entry.value));
+  }
+  if (entries.isEmpty) return null;
+  entries.sort((a, b) => a.key.compareTo(b.key));
   var total = 0;
-  while (!current.isAfter(last)) {
-    total += _lookupCount(current, countMap);
-    current = current.add(const Duration(days: 1));
+  for (final entry in entries) {
+    total += entry.value;
+    if (total >= milestoneGoal) {
+      return entry.key;
+    }
+  }
+  return null;
+}
+
+String _formatRelativeDay(DateTime date) {
+  final today = _stripTime(_nowProvider());
+  final diff = date.difference(today).inDays;
+  if (diff == 0) return 'today';
+  if (diff == 1) return 'tomorrow';
+  if (diff == -1) return 'yesterday';
+  if (diff > 1) return 'in $diff days';
+  return '${diff.abs()} days ago';
+}
+
+double _percentChange(double current, double previous) {
+  if (previous <= 0) {
+    return current == 0 ? 0 : 100;
+  }
+  return ((current - previous) / previous) * 100;
+}
+
+String _formatPercent(double value) {
+  final safe = value.isNaN || value.isInfinite ? 0.0 : value.abs();
+  return '${safe.round()}%';
+}
+
+String _formatDailyAverage(String timeframe, Map<String, int> countMap) {
+  final range = _getTimeframeRange(timeframe);
+  final total = _totalCountForTimeframe(timeframe, countMap);
+  final days = range.end.difference(_stripTime(range.start)).inDays + 1;
+  if (days <= 0) return '0.0';
+  final avg = total / days;
+  return avg.toStringAsFixed(1);
+}
+
+int _sumBucketTotals(List<int> counts) {
+  var total = 0;
+  for (final value in counts) {
+    total += value;
   }
   return total;
 }
 
-int _lookupCount(DateTime date, Map<String, int> countMap) {
-  final key = date.toIso8601String().split('T').first;
-  return countMap[key] ?? _countForDate(date);
+class _PeakResult {
+  final String countLabel;
+  final String dateLabel;
+
+  const _PeakResult({required this.countLabel, required this.dateLabel});
+
+  factory _PeakResult.empty() =>
+      const _PeakResult(countLabel: '0', dateLabel: 'No data');
+}
+
+_PeakResult _findPeakDay(String timeframe, Map<String, int> countMap) {
+  final range = _getTimeframeRange(timeframe);
+  var current = _stripTime(range.start);
+  final end = _stripTime(range.end);
+  var peakCount = -1;
+  DateTime? peakDate;
+
+  while (!current.isAfter(end)) {
+    final count = _lookupCount(current, countMap);
+    if (count > peakCount) {
+      peakCount = count;
+      peakDate = current;
+    }
+    current = current.add(const Duration(days: 1));
+  }
+
+  if (peakCount <= 0 || peakDate == null) {
+    return _PeakResult.empty();
+  }
+
+  return _PeakResult(
+    countLabel: _formatCount(peakCount),
+    dateLabel: _formatMonthDay(peakDate),
+  );
+}
+
+int _sumCountFromMap(_TimeframeRange range, Map<String, int> countMap) {
+  if (countMap.isEmpty) {
+    return _sumCountOverRange(range.start, range.end, countMap);
+  }
+  var total = 0;
+  for (final entry in countMap.entries) {
+    final parsed = _parseDateKey(entry.key);
+    if (parsed == null) continue;
+    final date = _stripTime(parsed);
+    if (date.isBefore(range.start) || date.isAfter(range.end)) {
+      continue;
+    }
+    total += entry.value;
+  }
+  if (total == 0) {
+    return _sumCountOverRange(range.start, range.end, countMap);
+  }
+  return total;
+}
+
+DateTime? _parseDateKey(String value) {
+  if (value.isEmpty) return null;
+  final normalized = value.length >= 10 ? value.substring(0, 10) : value;
+  return DateTime.tryParse(normalized);
 }
 
 String _formatCount(int value) {
@@ -903,23 +1162,85 @@ String _formatCount(int value) {
   return buffer.toString();
 }
 
+int _niceAxisMax(int value) {
+  if (value <= 0) return 1;
+  if (value <= 10) return 10;
+  if (value <= 50) return 50;
+  if (value <= 100) return 100;
+  if (value <= 500) return 500;
+  if (value <= 1000) return 1000;
+  if (value <= 5000) return 5000;
+  if (value <= 10000) return 10000;
+  final rounded = ((value + 999) ~/ 1000) * 1000;
+  return rounded;
+}
+
+String _formatAxisLabel(int value) {
+  if (value >= 1000) {
+    final k = value / 1000;
+    final text = k % 1 == 0 ? k.toStringAsFixed(0) : k.toStringAsFixed(1);
+    return '${text}k';
+  }
+  return _formatCount(value);
+}
+
 class _InsightsGrid extends StatelessWidget {
-  const _InsightsGrid();
+  final String timeframe;
+  final Map<String, int> countMap;
+  final bool isLoading;
+
+  const _InsightsGrid({
+    required this.timeframe,
+    required this.countMap,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cardDecoration = BoxDecoration(
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(AppRadius.lg),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.2),
-          blurRadius: 16,
-          offset: const Offset(0, 8),
+          color: Colors.black.withValues(alpha: 0.08),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
         ),
       ],
     );
+
+    final totalCount = isLoading
+        ? '...'
+        : _formatCount(_totalCountForTimeframe(timeframe, countMap));
+    final rangeLabel = _formatRangeForTimeframe(timeframe);
+    final dailyAvg = isLoading
+        ? '...'
+        : _formatDailyAverage(timeframe, countMap);
+    final peak = isLoading
+        ? _PeakResult.empty()
+        : _findPeakDay(timeframe, countMap);
+    final currentRange = _getTimeframeRange(timeframe);
+    final previousRange = _getPreviousTimeframeRange(timeframe);
+    final currentTotal = _totalCountForTimeframe(timeframe, countMap);
+    final previousTotal = _sumCountFromMap(previousRange, countMap);
+    final currentDays =
+        currentRange.end.difference(_stripTime(currentRange.start)).inDays + 1;
+    final previousDays =
+        previousRange.end.difference(_stripTime(previousRange.start)).inDays +
+        1;
+    final currentDailyAvg = currentDays <= 0 ? 0.0 : currentTotal / currentDays;
+    final previousDailyAvg = previousDays <= 0
+        ? 0.0
+        : previousTotal / previousDays;
+    final totalChange = _percentChange(
+      currentTotal.toDouble(),
+      previousTotal.toDouble(),
+    );
+    final dailyChange = _percentChange(currentDailyAvg, previousDailyAvg);
+    final totalTrendUp = totalChange >= 0;
+    final dailyTrendUp = dailyChange >= 0;
+    final totalDeltaLabel = isLoading ? '...' : _formatPercent(totalChange);
+    final dailyDeltaLabel = isLoading ? '...' : _formatPercent(dailyChange);
 
     return Column(
       children: [
@@ -952,7 +1273,7 @@ class _InsightsGrid extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    '1,284',
+                    totalCount,
                     style: AppTypography.headlineLarge.copyWith(
                       fontSize: 30,
                       color: AppColors.textPrimary,
@@ -963,15 +1284,19 @@ class _InsightsGrid extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        Icons.trending_up,
-                        color: AppColors.success,
+                        totalTrendUp ? Icons.trending_up : Icons.trending_down,
+                        color: totalTrendUp
+                            ? AppColors.success
+                            : AppColors.danger,
                         size: 14,
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
-                        '5.2%',
+                        totalDeltaLabel,
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.success,
+                          color: totalTrendUp
+                              ? AppColors.success
+                              : AppColors.danger,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -981,7 +1306,7 @@ class _InsightsGrid extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Accumulated since Monday',
+                'Accumulated for $rangeLabel',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textSecondary.withValues(alpha: 0.7),
                 ),
@@ -1021,7 +1346,7 @@ class _InsightsGrid extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      '18.5',
+                      dailyAvg,
                       style: AppTypography.headlineLarge.copyWith(
                         fontSize: 24,
                         color: AppColors.textPrimary,
@@ -1031,15 +1356,21 @@ class _InsightsGrid extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          Icons.trending_down,
-                          color: AppColors.danger,
+                          dailyTrendUp
+                              ? Icons.trending_up
+                              : Icons.trending_down,
+                          color: dailyTrendUp
+                              ? AppColors.success
+                              : AppColors.danger,
                           size: 14,
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          '2.1%',
+                          dailyDeltaLabel,
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.danger,
+                            color: dailyTrendUp
+                                ? AppColors.success
+                                : AppColors.danger,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1076,7 +1407,7 @@ class _InsightsGrid extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      '42',
+                      peak.countLabel,
                       style: AppTypography.headlineLarge.copyWith(
                         fontSize: 24,
                         color: AppColors.textPrimary,
@@ -1088,7 +1419,7 @@ class _InsightsGrid extends StatelessWidget {
                         Icon(Icons.bolt, color: AppColors.success, size: 14),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          'Oct 12',
+                          peak.dateLabel,
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.success,
                             fontWeight: FontWeight.w600,
@@ -1135,7 +1466,6 @@ class _MilestoneItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [

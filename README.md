@@ -2,6 +2,12 @@
 
 A new Flutter project.
 
+## Launcher Icons
+
+Regenerate app icons after updating assets/logo.png:
+
+- dart run flutter_launcher_icons
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

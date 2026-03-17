@@ -24,6 +24,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We use the microphone to count your target words by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>We use speech recognition to count your target words.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We use your photo library to set a wallpaper for the app.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We save a copy of your selected image as the app wallpaper.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We use the camera to take a profile or wallpaper photo.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

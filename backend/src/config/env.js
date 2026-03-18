@@ -30,6 +30,14 @@ const env = {
     Math.max(parseInteger(process.env.OTP_EXPIRE_MINUTES, 10), 1),
     30
   ),
+  otpMaxAttempts: Math.min(
+    Math.max(parseInteger(process.env.OTP_MAX_ATTEMPTS, 5), 1),
+    10
+  ),
+  otpResendCooldownSeconds: Math.min(
+    Math.max(parseInteger(process.env.OTP_RESEND_COOLDOWN_SECONDS, 30), 0),
+    300
+  ),
 };
 
 module.exports = env;

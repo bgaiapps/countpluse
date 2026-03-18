@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
+const env = require('../config/env');
 
 const emailProvider = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
 
@@ -165,7 +166,7 @@ const sendOtpEmail = async (user, otpCode) => {
           </div>
 
           <p style="color: #999; font-size: 12px; margin-top: 20px;">
-            This OTP will expire in 10 minutes.
+            This OTP will expire in ${env.otpExpireMinutes} minutes.
           </p>
         </div>
 

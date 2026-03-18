@@ -3,8 +3,22 @@ import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'otp_screen.dart';
 
+typedef LoginAction = Future<AuthUser> Function({required String email});
+typedef RegisterAction = Future<AuthUser> Function({
+  required String name,
+  required String email,
+  required String phone,
+});
+
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({
+    super.key,
+    this.loginAction = AuthService.login,
+    this.registerAction = AuthService.register,
+  });
+
+  final LoginAction loginAction;
+  final RegisterAction registerAction;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -52,6 +66,19 @@ class _AuthScreenState extends State<AuthScreen> {
       return 'Please enter a valid phone number';
     }
     return null;
+  }
+
+  String _friendlyAuthError(Object error) {
+    final rawMessage = error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+    final normalized = rawMessage.toLowerCase();
+    if (normalized.contains('valid email') ||
+        normalized.contains('invalid email')) {
+      return 'Invalid email';
+    }
+    if (normalized.contains('phone')) {
+      return 'Invalid phone number';
+    }
+    return rawMessage;
   }
 
   @override
@@ -105,6 +132,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 18),
           TextField(
+            key: const Key('login_email_field'),
             controller: _loginController,
             decoration: const InputDecoration(
               labelText: 'Email',
@@ -129,7 +157,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       }
                       setState(() => _isLoginLoading = true);
                       try {
-                        final user = await AuthService.login(email: value);
+                        final user = await widget.loginAction(email: value);
                         if (!context.mounted) return;
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -148,7 +176,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(
                           context,
-                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                        ).showSnackBar(
+                          SnackBar(content: Text(_friendlyAuthError(e))),
+                        );
                       } finally {
                         if (mounted) setState(() => _isLoginLoading = false);
                       }
@@ -183,12 +213,14 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 18),
           TextField(
+            key: const Key('register_name_field'),
             controller: _nameController,
             decoration: const InputDecoration(labelText: 'Name'),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
           TextField(
+            key: const Key('register_email_field'),
             controller: _emailController,
             decoration: const InputDecoration(labelText: 'Email'),
             keyboardType: TextInputType.emailAddress,
@@ -196,6 +228,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 12),
           TextField(
+            key: const Key('register_phone_field'),
             controller: _phoneController,
             decoration: const InputDecoration(labelText: 'Phone Number'),
             keyboardType: TextInputType.phone,
@@ -233,7 +266,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       }
                       setState(() => _isRegisterLoading = true);
                       try {
-                        await AuthService.register(
+                        await widget.registerAction(
                           name: name,
                           email: email,
                           phone: phone,
@@ -259,7 +292,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(
                           context,
-                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                        ).showSnackBar(
+                          SnackBar(content: Text(_friendlyAuthError(e))),
+                        );
                       } finally {
                         if (mounted) setState(() => _isRegisterLoading = false);
                       }

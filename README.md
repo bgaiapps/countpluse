@@ -1,22 +1,61 @@
-# countpluse
+# Countpluse
 
-A new Flutter project.
+Countpluse is a devotional japa counter built with Flutter. It supports guest
+and login flows, daily counting, summaries, voice-assisted counting, and
+customizable practice settings such as daily goal, mantra label, profile photo,
+and wallpaper.
+
+## Android Release Notes
+
+Android release configuration is ready in the repo:
+
+- package id: `com.bgaiapps.countpluse`
+- app label: `Countpluse`
+- launcher icon source: `assets/logo.png`
+- release signing template: `android/key.properties.example`
+
+Before building a Play Store release, create:
+
+- `android/key.properties`
+- your upload keystore file (`.jks` / `.keystore`)
+
+Then build:
+
+```bash
+flutter build appbundle --release
+```
+
+Output:
+
+- `build/app/outputs/bundle/release/app-release.aab`
 
 ## Launcher Icons
 
-Regenerate app icons after updating assets/logo.png:
+Regenerate launcher icons after updating `assets/logo.png`:
 
-- dart run flutter_launcher_icons
+```bash
+dart run flutter_launcher_icons
+```
 
-## Getting Started
+## App Store Documents
 
-This project is a starting point for a Flutter application.
+Repo-managed Play submission docs:
 
-A few resources to get you started if this is your first Flutter project:
+- `PLAY_STORE_LISTING.md`
+- `PRIVACY_POLICY.md`
+- `EULA.md`
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Development
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Run Flutter locally:
+
+```bash
+flutter run
+```
+
+Run checks:
+
+```bash
+flutter analyze
+flutter test
+```

@@ -636,6 +636,34 @@ class _HomeScreenState extends State<HomeScreen>
     debugPrint('[voice] $message');
   }
 
+  Future<void> _confirmReset() async {
+    final shouldReset = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reset Today\'s Count?'),
+          content: const Text(
+            'You will lose the count for the whole current day.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Reset'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldReset == true) {
+      _reset();
+    }
+  }
+
   void _reset() {
     setState(() {
       _count = 0;
@@ -941,7 +969,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               elevation: 1,
                             ),
-                            onPressed: _reset,
+                            onPressed: _confirmReset,
                             icon: const Icon(Icons.restart_alt),
                             label: const Text('Reset'),
                           ),

@@ -12,6 +12,10 @@ const generateOtpCode = () => {
   return crypto.randomInt(1000, 10000).toString();
 };
 
+const hashOtpCode = (otpCode) => {
+  return crypto.createHash('sha256').update(String(otpCode)).digest('hex');
+};
+
 // Generate JWT token for authenticated sessions
 const generateJWT = (userId) => {
   return jwt.sign({ userId }, env.jwtSecret, {
@@ -31,6 +35,7 @@ const verifyJWT = (token) => {
 module.exports = {
   generateVerificationToken,
   generateOtpCode,
+  hashOtpCode,
   generateJWT,
   verifyJWT,
 };

@@ -1,4 +1,4 @@
-package com.example.countpluse
+package com.bgaiapps.countpluse
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,5 +1,9 @@
 const User = require('../models/User');
-const { generateOtpCode, generateJWT } = require('../utils/tokenGenerator');
+const {
+  generateOtpCode,
+  generateJWT,
+  hashOtpCode,
+} = require('../utils/tokenGenerator');
 const { sendOtpEmail } = require('../utils/emailService');
 const env = require('../config/env');
 
@@ -13,6 +17,33 @@ const errorBody = (message, error) => ({
   message,
   error: !env.isProduction && error ? error.message : undefined,
 });
+const isOtpExpired = user =>
+  !user?.verificationTokenExpires ||
+  user.verificationTokenExpires.getTime() <= Date.now();
+const getOtpCooldownSeconds = user => {
+  if (!user?.otpLastSentAt) return 0;
+  const elapsedMs = Date.now() - user.otpLastSentAt.getTime();
+  const remainingMs = env.otpResendCooldownSeconds * 1000 - elapsedMs;
+  return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+};
+const assignOtp = (user, otpCode) => {
+  user.verificationToken = hashOtpCode(otpCode);
+  user.verificationTokenExpires = new Date(
+    Date.now() + env.otpExpireMinutes * 60 * 1000
+  );
+  user.otpAttemptCount = 0;
+  user.otpLastSentAt = new Date();
+};
+const clearOtp = user => {
+  user.verificationToken = null;
+  user.verificationTokenExpires = null;
+  user.otpAttemptCount = 0;
+};
+const matchesStoredOtp = (storedValue, enteredOtp) => {
+  if (!storedValue || !enteredOtp) return false;
+  const hashedOtp = hashOtpCode(enteredOtp);
+  return storedValue === hashedOtp || storedValue === enteredOtp;
+};
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -43,25 +74,29 @@ const register = async (req, res) => {
 
     // Generate OTP (10 minutes by default)
     const otpCode = generateOtpCode();
-    const otpMinutes = env.otpExpireMinutes;
-    const verificationTokenExpires = new Date(Date.now() + otpMinutes * 60 * 1000);
 
     const isExistingUnverified = Boolean(user && !user.isVerified);
     if (isExistingUnverified) {
+      const cooldownSeconds = getOtpCooldownSeconds(user);
+      if (!isOtpExpired(user) && cooldownSeconds > 0) {
+        return res.status(429).json({
+          success: false,
+          message: `OTP already sent. Please wait ${cooldownSeconds} seconds before requesting a new code.`,
+        });
+      }
       user.name = normalizedName;
       user.phone = normalizedPhone;
-      user.verificationToken = otpCode;
-      user.verificationTokenExpires = verificationTokenExpires;
+      assignOtp(user, otpCode);
       await user.save();
     } else {
       user = await User.create({
         name: normalizedName,
         email: normalizedEmail,
         phone: normalizedPhone,
-        verificationToken: otpCode,
-        verificationTokenExpires,
         isVerified: false,
       });
+      assignOtp(user, otpCode);
+      await user.save();
     }
 
     // Send OTP email
@@ -69,8 +104,7 @@ const register = async (req, res) => {
       await sendOtpEmail(user, otpCode);
     } catch (emailError) {
       if (isExistingUnverified) {
-        user.verificationToken = null;
-        user.verificationTokenExpires = null;
+        clearOtp(user);
         await user.save();
       } else {
         await User.deleteOne({ _id: user._id });
@@ -177,9 +211,14 @@ const login = async (req, res) => {
 
     // Generate OTP
     const otpCode = generateOtpCode();
-    const otpMinutes = env.otpExpireMinutes;
-    user.verificationToken = otpCode;
-    user.verificationTokenExpires = new Date(Date.now() + otpMinutes * 60 * 1000);
+    const cooldownSeconds = getOtpCooldownSeconds(user);
+    if (!isOtpExpired(user) && cooldownSeconds > 0) {
+      return res.status(429).json({
+        success: false,
+        message: `OTP already sent. Please wait ${cooldownSeconds} seconds before requesting a new code.`,
+      });
+    }
+    assignOtp(user, otpCode);
     await user.save();
 
     // Send OTP email
@@ -255,13 +294,26 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: normalizedEmail,
-      verificationToken: normalizedOtp,
-      verificationTokenExpires: { $gt: Date.now() },
-    });
+    const user = await User.findOne({ email: normalizedEmail });
 
-    if (!user) {
+    if (!user || isOtpExpired(user) || !user.verificationToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP',
+      });
+    }
+
+    if (!matchesStoredOtp(user.verificationToken, normalizedOtp)) {
+      user.otpAttemptCount = (user.otpAttemptCount || 0) + 1;
+      if (user.otpAttemptCount >= env.otpMaxAttempts) {
+        clearOtp(user);
+        await user.save();
+        return res.status(429).json({
+          success: false,
+          message: 'Too many invalid OTP attempts. Please request a new code.',
+        });
+      }
+      await user.save();
       return res.status(400).json({
         success: false,
         message: 'Invalid or expired OTP',
@@ -269,8 +321,7 @@ const verifyOtp = async (req, res) => {
     }
 
     user.isVerified = true;
-    user.verificationToken = null;
-    user.verificationTokenExpires = null;
+    clearOtp(user);
     await user.save();
 
     const token = generateJWT(user._id);

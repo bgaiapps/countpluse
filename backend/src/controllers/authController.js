@@ -17,6 +17,8 @@ const errorBody = (message, error) => ({
   message,
   error: !env.isProduction && error ? error.message : undefined,
 });
+const otpCooldownMessage = cooldownSeconds =>
+  `OTP already sent. Please wait ${cooldownSeconds} seconds before requesting a new code.`;
 const isOtpExpired = user =>
   !user?.verificationTokenExpires ||
   user.verificationTokenExpires.getTime() <= Date.now();
@@ -43,6 +45,36 @@ const matchesStoredOtp = (storedValue, enteredOtp) => {
   if (!storedValue || !enteredOtp) return false;
   const hashedOtp = hashOtpCode(enteredOtp);
   return storedValue === hashedOtp || storedValue === enteredOtp;
+};
+const sendOtpSuccess = (res, statusCode, message, user) =>
+  res.status(statusCode).json({
+    success: true,
+    message,
+    data: {
+      userId: user._id,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+    },
+  });
+const sendOtpFailure = async (res, user, emailError, rollback) => {
+  await rollback();
+  return res.status(500).json({
+    success: false,
+    message: 'Failed to send verification email. Please try again.',
+    error: !env.isProduction ? emailError.message : undefined,
+  });
+};
+const rejectIfOtpCooldownActive = (res, user) => {
+  const cooldownSeconds = getOtpCooldownSeconds(user);
+  if (!isOtpExpired(user) && cooldownSeconds > 0) {
+    res.status(429).json({
+      success: false,
+      message: otpCooldownMessage(cooldownSeconds),
+    });
+    return true;
+  }
+  return false;
 };
 
 // @desc    Register a new user
@@ -77,12 +109,8 @@ const register = async (req, res) => {
 
     const isExistingUnverified = Boolean(user && !user.isVerified);
     if (isExistingUnverified) {
-      const cooldownSeconds = getOtpCooldownSeconds(user);
-      if (!isOtpExpired(user) && cooldownSeconds > 0) {
-        return res.status(429).json({
-          success: false,
-          message: `OTP already sent. Please wait ${cooldownSeconds} seconds before requesting a new code.`,
-        });
+      if (rejectIfOtpCooldownActive(res, user)) {
+        return;
       }
       user.name = normalizedName;
       user.phone = normalizedPhone;
@@ -103,32 +131,30 @@ const register = async (req, res) => {
     try {
       await sendOtpEmail(user, otpCode);
     } catch (emailError) {
-      if (isExistingUnverified) {
-        clearOtp(user);
-        await user.save();
-      } else {
-        await User.deleteOne({ _id: user._id });
-      }
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send verification email. Please try again.',
-        error: !env.isProduction ? emailError.message : undefined,
-      });
+      return sendOtpFailure(
+        res,
+        user,
+        emailError,
+        async () => {
+          if (isExistingUnverified) {
+            clearOtp(user);
+            await user.save();
+          } else {
+            await User.deleteOne({ _id: user._id });
+          }
+        }
+      );
     }
 
-    res.status(201).json({
-      success: true,
-      message: 'OTP sent to your email. Please verify to continue.',
-      data: {
-        userId: user._id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-      },
-    });
+    return sendOtpSuccess(
+      res,
+      201,
+      'OTP sent to your email. Please verify to continue.',
+      user
+    );
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json(errorBody('Error registering user', error));
+    return res.status(500).json(errorBody('Error registering user', error));
   }
 };
 
@@ -211,12 +237,8 @@ const login = async (req, res) => {
 
     // Generate OTP
     const otpCode = generateOtpCode();
-    const cooldownSeconds = getOtpCooldownSeconds(user);
-    if (!isOtpExpired(user) && cooldownSeconds > 0) {
-      return res.status(429).json({
-        success: false,
-        message: `OTP already sent. Please wait ${cooldownSeconds} seconds before requesting a new code.`,
-      });
+    if (rejectIfOtpCooldownActive(res, user)) {
+      return;
     }
     assignOtp(user, otpCode);
     await user.save();
@@ -224,19 +246,10 @@ const login = async (req, res) => {
     // Send OTP email
     await sendOtpEmail(user, otpCode);
 
-    res.status(200).json({
-      success: true,
-      message: 'OTP sent to your email.',
-      data: {
-        userId: user._id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-      },
-    });
+    return sendOtpSuccess(res, 200, 'OTP sent to your email.', user);
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json(errorBody('Error logging in', error));
+    return res.status(500).json(errorBody('Error logging in', error));
   }
 };
 

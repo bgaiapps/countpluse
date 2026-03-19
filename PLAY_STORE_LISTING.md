@@ -10,8 +10,8 @@ Health & Fitness
 
 Alternative options:
 
-- Productivity
 - Lifestyle
+- Productivity
 
 ## Short Description
 
@@ -39,7 +39,10 @@ Countpluse is intended for personal devotional practice and progress tracking.
 
 ## Contact Email
 
-Use your support email in Play Console.
+Recommended:
+
+- use a dedicated support email such as `support@countpluse.com`
+- if no custom domain is ready yet, use a stable mailbox you control long-term
 
 ## Permissions Rationale
 

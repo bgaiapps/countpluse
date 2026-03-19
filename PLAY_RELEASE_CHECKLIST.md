@@ -35,7 +35,7 @@ version of Countpluse to Google Play.
 
 ## 3. Store Assets
 
-- [ ] Final Play Store app icon (512x512 PNG)
+- [x] Final Play Store app icon (512x512 PNG)
 - [ ] Feature graphic (1024x500 PNG)
 - [ ] Home screen screenshot
 - [ ] Summary screen screenshot
@@ -46,6 +46,7 @@ version of Countpluse to Google Play.
 
 - [x] Draft short description prepared
 - [x] Draft full description prepared
+- [x] Play Console prep guide created
 - [ ] Finalize support/contact email
 - [ ] Finalize app category
 - [ ] Finalize release countries/regions
@@ -90,3 +91,7 @@ version of Countpluse to Google Play.
   voice-counting feature.
 - `CAMERA` stays in this release because Settings allows taking a profile photo
   and wallpaper photo directly from the camera.
+- Play asset files currently prepared in `play-store-assets/`:
+  - `app-icon-512.png`
+  - `feature-graphic.svg`
+  - `feature-graphic.svg.png` (preview export, not final Play upload file)

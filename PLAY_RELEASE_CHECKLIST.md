@@ -16,7 +16,7 @@ version of Countpluse to Google Play.
 - [x] EULA draft created
 - [x] GitHub Pages HTML created for privacy policy
 - [x] GitHub Pages HTML created for EULA
-- [ ] Push `docs/` pages to GitHub
+- [x] Push `docs/` pages to GitHub
 - [ ] Enable GitHub Pages for `main` -> `/docs`
 - [ ] Confirm final public privacy policy URL
 - [x] Review Android permissions for release (`INTERNET`, `RECORD_AUDIO`, `CAMERA`)
@@ -82,7 +82,7 @@ version of Countpluse to Google Play.
 
 ## Current Recommended Next Step
 
-- [ ] Push `docs/` pages to GitHub
+- [ ] Enable GitHub Pages for `main` -> `/docs`
 
 ## Notes
 

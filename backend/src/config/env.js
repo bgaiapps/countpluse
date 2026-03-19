@@ -40,4 +40,32 @@ const env = {
   ),
 };
 
+env.emailProvider = (process.env.EMAIL_PROVIDER || 'smtp').trim().toLowerCase();
+env.emailFrom = process.env.EMAIL_FROM?.trim() || '';
+env.emailService = process.env.EMAIL_SERVICE?.trim() || 'gmail';
+env.emailUser = process.env.EMAIL_USER?.trim() || '';
+env.emailPassword = process.env.EMAIL_PASSWORD?.trim() || '';
+env.sendgridApiKey = process.env.SENDGRID_API_KEY?.trim() || '';
+
+if (env.isProduction) {
+  if (!env.emailFrom) {
+    throw new Error('EMAIL_FROM must be set');
+  }
+
+  if (env.emailProvider === 'smtp') {
+    if (!env.emailUser) {
+      throw new Error('EMAIL_USER must be set for SMTP');
+    }
+    if (!env.emailPassword) {
+      throw new Error('EMAIL_PASSWORD must be set for SMTP');
+    }
+  } else if (env.emailProvider === 'sendgrid') {
+    if (!env.sendgridApiKey) {
+      throw new Error('SENDGRID_API_KEY must be set for SendGrid');
+    }
+  } else {
+    throw new Error(`Unsupported EMAIL_PROVIDER: ${env.emailProvider}`);
+  }
+}
+
 module.exports = env;

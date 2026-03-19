@@ -1,6 +1,7 @@
 # Countpluse Backend API
 
-Backend server for Countpluse user registration and OTP-based authentication.
+Backend server for Countpluse user registration, OTP-based authentication, and
+count history APIs.
 
 ## Features
 
@@ -9,14 +10,15 @@ Backend server for Countpluse user registration and OTP-based authentication.
 - JWT-based authentication
 - Protected endpoint for user profile
 - MongoDB Atlas for user storage
-- SendGrid for email delivery
+- SMTP or SendGrid for email delivery
 - Input validation and error handling
+- Count history APIs for authenticated users
 
 ## Prerequisites
 
 - Node.js (v14 or higher)
 - MongoDB Atlas
-- SendGrid account (verified sender)
+- SMTP credentials or SendGrid account
 
 ## Installation
 
@@ -33,19 +35,41 @@ Backend server for Countpluse user registration and OTP-based authentication.
    JWT_SECRET=your_real_secret
    JWT_EXPIRE=7d
 
-   # Email Configuration (SendGrid)
-   EMAIL_PROVIDER=sendgrid
-   SENDGRID_API_KEY=your_sendgrid_api_key
-   EMAIL_FROM=verified_sender@example.com
+   # Email Configuration
+   EMAIL_PROVIDER=smtp
+   EMAIL_FROM=your_sender@example.com
+
+   # SMTP example
+   EMAIL_SERVICE=gmail
+   EMAIL_USER=your_sender@example.com
+   EMAIL_PASSWORD=your_app_password
+
+   # Or SendGrid example
+   # EMAIL_PROVIDER=sendgrid
+   # SENDGRID_API_KEY=your_sendgrid_api_key
 
    OTP_EXPIRE_MINUTES=10
+   OTP_MAX_ATTEMPTS=5
+   OTP_RESEND_COOLDOWN_SECONDS=30
+   CORS_ORIGIN=https://your-frontend.example.com
    NODE_ENV=production
    ```
 
-## Running the Server (Production)
+   A tracked template is available at `backend/.env.example`.
+
+## Running the Server
+
+Development:
 
 ```bash
 npm start
+```
+
+Checks:
+
+```bash
+npm run lint
+npm test
 ```
 
 ## API Endpoints
@@ -108,7 +132,7 @@ npm start
 ```json
 {
   "success": false,
-  "message": "Invalid or expired verification token"
+  "message": "Invalid or expired OTP"
 }
 ```
 
@@ -206,6 +230,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   isVerified: Boolean,
   verificationToken: String | null,
   verificationTokenExpires: Date | null,
+  otpAttemptCount: Number,
+  otpLastSentAt: Date | null,
   password: String | null,
   createdAt: Date,
   updatedAt: Date
@@ -218,6 +244,18 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 |----------|-------------|---------|
 | `PORT` | Server port | `5051` |
 | `MONGODB_URI` | MongoDB connection string | `mongodb+srv://...` |
+| `JWT_SECRET` | JWT signing secret | `change_me` |
+| `JWT_EXPIRE` | JWT lifetime | `7d` |
+| `EMAIL_PROVIDER` | `smtp` or `sendgrid` | `smtp` |
+| `EMAIL_FROM` | Sender email | `noreply@example.com` |
+| `EMAIL_SERVICE` | SMTP service name | `gmail` |
+| `EMAIL_USER` | SMTP username | `noreply@example.com` |
+| `EMAIL_PASSWORD` | SMTP password/app password | `...` |
+| `SENDGRID_API_KEY` | SendGrid API key | `SG.xxxxx` |
+| `OTP_EXPIRE_MINUTES` | OTP lifetime in minutes | `10` |
+| `OTP_MAX_ATTEMPTS` | Max invalid OTP attempts | `5` |
+| `OTP_RESEND_COOLDOWN_SECONDS` | Cooldown before new OTP | `30` |
+| `CORS_ORIGIN` | Allowed frontend origins | `https://app.example.com` |
 | `JWT_SECRET` | Secret key for JWT | `your_secret_key` |
 | `JWT_EXPIRE` | JWT token expiration | `7d` |
 | `EMAIL_PROVIDER` | Email provider (`sendgrid` or `smtp`) | `sendgrid` |

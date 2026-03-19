@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const emailPattern =
+  /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -14,7 +17,7 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Please provide an email'],
       unique: true,
       lowercase: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
+      match: [emailPattern, 'Please provide a valid email'],
     },
     phone: {
       type: String,

@@ -2,23 +2,23 @@ const nodemailer = require('nodemailer');
 const sgMail = require('@sendgrid/mail');
 const env = require('../config/env');
 
-const emailProvider = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
+const emailProvider = env.emailProvider;
 
 if (emailProvider === 'sendgrid') {
-  if (!process.env.SENDGRID_API_KEY) {
+  if (!env.sendgridApiKey) {
     console.warn('SENDGRID_API_KEY is not set. Email sending will fail.');
   } else {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    sgMail.setApiKey(env.sendgridApiKey);
   }
 }
 
 const transporter =
   emailProvider === 'smtp'
     ? nodemailer.createTransport({
-        service: process.env.EMAIL_SERVICE || 'gmail',
+        service: env.emailService,
         auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD,
+          user: env.emailUser,
+          pass: env.emailPassword,
         },
       })
     : null;
@@ -37,7 +37,7 @@ const sendMail = async (mailOptions, logLabel) => {
 // Send verification email
 const sendVerificationEmail = async (user, verificationUrl) => {
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    from: env.emailFrom || env.emailUser,
     to: user.email,
     subject: 'Verify Your Countpluse Account',
     html: `
@@ -94,7 +94,7 @@ const sendVerificationEmail = async (user, verificationUrl) => {
 // Send login link email (for passwordless login alternative)
 const sendLoginLinkEmail = async (user, loginUrl) => {
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    from: env.emailFrom || env.emailUser,
     to: user.email,
     subject: 'Your Countpluse Login Link',
     html: `
@@ -143,7 +143,7 @@ const sendLoginLinkEmail = async (user, loginUrl) => {
 // Send OTP email (for login/registration)
 const sendOtpEmail = async (user, otpCode) => {
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    from: env.emailFrom || env.emailUser,
     to: user.email,
     subject: 'Your Countpluse OTP Code',
     html: `

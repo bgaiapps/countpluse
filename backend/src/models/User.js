@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
 const emailPattern =
   /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
@@ -46,37 +45,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    password: {
-      type: String,
-      default: null,
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false,
-    },
   },
   {
     timestamps: true,
   }
 );
-
-// Hash password before saving (if provided)
-userSchema.pre('save', async function (next) {
-  // Only hash if password is new or modified
-  if (!this.isModified('password') || !this.password) {
-    return next();
-  }
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Method to compare password
-userSchema.methods.comparePassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
 
 module.exports = mongoose.model('User', userSchema);

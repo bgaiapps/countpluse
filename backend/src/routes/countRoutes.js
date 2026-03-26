@@ -2,8 +2,6 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const countController = require('../controllers/countController');
 const authMiddleware = require('../middleware/authMiddleware');
-const User = require('../models/User');
-
 const router = express.Router();
 const allowDevAuthBypass =
   process.env.NODE_ENV !== 'production' &&
@@ -24,17 +22,10 @@ const devUserMiddleware = async (req, res, next) => {
     req.userId = userId;
     return next();
   }
-
-  const fallbackUser = await User.findOne().select('_id').lean();
-  if (!fallbackUser) {
-    return res.status(400).json({
-      success: false,
-      message: 'No users available. Seed the database first.',
-    });
-  }
-
-  req.userId = fallbackUser._id.toString();
-  return next();
+  return res.status(401).json({
+    success: false,
+    message: 'Authentication required',
+  });
 };
 
 router.use(devUserMiddleware);

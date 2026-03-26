@@ -158,58 +158,6 @@ const register = async (req, res) => {
   }
 };
 
-// @desc    Verify email with token
-// @route   GET /api/auth/verify/:token
-// @access  Public
-const verifyEmail = async (req, res) => {
-  try {
-    const { token } = req.params;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: 'Verification token is required',
-      });
-    }
-
-    // Find user with verification token
-    const user = await User.findOne({
-      verificationToken: token,
-      verificationTokenExpires: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired verification token',
-      });
-    }
-
-    // Mark user as verified
-    user.isVerified = true;
-    user.verificationToken = null;
-    user.verificationTokenExpires = null;
-    await user.save();
-
-    // Generate JWT token for login
-    const jwtToken = generateJWT(user._id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Email verified successfully!',
-      data: {
-        userId: user._id,
-        email: user.email,
-        name: user.name,
-        token: jwtToken,
-      },
-    });
-  } catch (error) {
-    console.error('Verify email error:', error);
-    res.status(500).json(errorBody('Error verifying email', error));
-  }
-};
-
 // @desc    Login user (for verified accounts)
 // @route   POST /api/auth/login
 // @access  Public
@@ -358,7 +306,6 @@ const verifyOtp = async (req, res) => {
 
 module.exports = {
   register,
-  verifyEmail,
   login,
   getProfile,
   verifyOtp,

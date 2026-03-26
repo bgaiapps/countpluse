@@ -1,7 +1,7 @@
 {
-  "name": "countpluse-backend",
+  "name": "japlo-backend",
   "version": "1.0.0",
-  "description": "Backend API for Countpluse user registration and authentication",
+  "description": "Backend API for Japlo user registration, OTP authentication, and count history",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -9,22 +9,21 @@
     "test": "node --test test/**/*.test.js"
   },
   "keywords": [
-    "countpluse",
+    "japlo",
     "authentication",
-    "email-verification"
+    "otp",
+    "resend"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.5.0",
-    "dotenv": "^16.3.1",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.0",
-    "nodemailer": "^6.9.3",
-    "@sendgrid/mail": "^8.1.4",
     "cors": "^2.8.5",
-    "express-validator": "^7.0.0"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.5.0",
+    "resend": "^6.9.4"
   },
   "devDependencies": {
     "eslint": "^9.18.0"

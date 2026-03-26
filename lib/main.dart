@@ -13,7 +13,8 @@ Future<void> main() async {
   await AppSettingsService.init();
   await SessionService.init();
   await CountsService.init();
-  if (kDebugMode) {
+  const seedDemoData = bool.fromEnvironment('SEED_DEMO_DATA');
+  if (kDebugMode && seedDemoData) {
     await CountsService.seedDemoHistoryIfEmpty();
   }
   await ProfilePhotoService.init();

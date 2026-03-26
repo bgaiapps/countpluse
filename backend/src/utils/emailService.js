@@ -1,35 +1,19 @@
-const nodemailer = require('nodemailer');
-const sgMail = require('@sendgrid/mail');
+const { Resend } = require('resend');
 const env = require('../config/env');
 
-const emailProvider = env.emailProvider;
+const resend = env.resendApiKey ? new Resend(env.resendApiKey) : null;
 
-if (emailProvider === 'sendgrid') {
-  if (!env.sendgridApiKey) {
-    console.warn('SENDGRID_API_KEY is not set. Email sending will fail.');
-  } else {
-    sgMail.setApiKey(env.sendgridApiKey);
-  }
+if (!env.resendApiKey) {
+  console.warn('RESEND_API_KEY is not set. Email sending will fail.');
 }
 
-const transporter =
-  emailProvider === 'smtp'
-    ? nodemailer.createTransport({
-        service: env.emailService,
-        auth: {
-          user: env.emailUser,
-          pass: env.emailPassword,
-        },
-      })
-    : null;
-
 const sendMail = async (mailOptions, logLabel) => {
-  if (emailProvider === 'sendgrid') {
-    await sgMail.send(mailOptions);
-  } else if (transporter) {
-    await transporter.sendMail(mailOptions);
-  } else {
-    throw new Error('Email provider is not configured');
+  if (!resend) {
+    throw new Error('Resend is not configured');
+  }
+  const { error } = await resend.emails.send(mailOptions);
+  if (error) {
+    throw new Error(error.message || 'Resend send failed');
   }
   console.log(`${logLabel} email sent to ${mailOptions.to}`);
 };
@@ -37,7 +21,7 @@ const sendMail = async (mailOptions, logLabel) => {
 // Send verification email
 const sendVerificationEmail = async (user, verificationUrl) => {
   const mailOptions = {
-    from: env.emailFrom || env.emailUser,
+    from: env.emailFrom,
     to: user.email,
     subject: 'Verify Your Japlo Account',
     html: `
@@ -94,7 +78,7 @@ const sendVerificationEmail = async (user, verificationUrl) => {
 // Send login link email (for passwordless login alternative)
 const sendLoginLinkEmail = async (user, loginUrl) => {
   const mailOptions = {
-    from: env.emailFrom || env.emailUser,
+    from: env.emailFrom,
     to: user.email,
     subject: 'Your Japlo Login Link',
     html: `
@@ -143,7 +127,7 @@ const sendLoginLinkEmail = async (user, loginUrl) => {
 // Send OTP email (for login/registration)
 const sendOtpEmail = async (user, otpCode) => {
   const mailOptions = {
-    from: env.emailFrom || env.emailUser,
+    from: env.emailFrom,
     to: user.email,
     subject: 'Your Japlo OTP Code',
     html: `

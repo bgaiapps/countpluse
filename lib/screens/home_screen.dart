@@ -24,8 +24,8 @@ class _HomeScreenState extends State<HomeScreen>
   static const int _countsPerMala = 108;
   static const List<double> _burstLanes = [-0.24, -0.12, 0.0, 0.12, 0.24];
   static const Duration _burstLifetime = Duration(milliseconds: 980);
-  static const Duration _voiceSessionDuration = Duration(seconds: 8);
-  static const Duration _voicePauseDuration = Duration(seconds: 2);
+  static const Duration _voiceSessionDuration = Duration(seconds: 60);
+  static const Duration _voicePauseDuration = Duration(seconds: 8);
 
   int _count = 0;
   int _nextBurstId = 0;
@@ -37,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen>
   late final stt.SpeechToText _speech;
   bool _isListening = false;
   bool _speechReady = false;
-  int _lastFinalMatchCount = 0;
+  int _highestSessionMatchCount = 0;
   String _voiceStatus = 'idle';
   String? _selectedLocaleId;
   List<String> _availableLocaleIds = const [];
@@ -166,6 +166,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (!_speechReady) {
       await _initSpeech();
     }
+    if (_speechReady) {
+      await _selectBestLocale();
+    }
     final hasPermission = await _speech.hasPermission;
     if (!_speechReady) {
       if (!mounted) return;
@@ -186,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return;
     setState(() => _isListening = true);
     _voiceSessionIndex = 0;
-    _lastFinalMatchCount = 0;
+    _highestSessionMatchCount = 0;
     _lastProcessedTranscript = '';
     _voiceSessionStartedAt = null;
     _didRetryWithoutLocale = false;
@@ -211,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen>
     // Reset session-specific transcript state so repeated single-word
     // utterances in a new session are counted again.
     _lastProcessedTranscript = '';
-    _lastFinalMatchCount = 0;
+    _highestSessionMatchCount = 0;
 
     if (mounted) {
       setState(() {
@@ -281,23 +284,27 @@ class _HomeScreenState extends State<HomeScreen>
     if (normalized == 'done' ||
         normalized == 'notlistening' ||
         normalized == 'donenoresult') {
+      _voiceRetryTimer?.cancel();
+      _voiceStartTimeoutTimer?.cancel();
       _finalizeVoiceSession(
         DateTime.now(),
         fromNoMatch: normalized == 'donenoresult',
       );
+      if (mounted) {
+        setState(() {
+          _isListening = false;
+          _voiceStatus = normalized == 'donenoresult'
+              ? 'did not hear the word'
+              : 'tap mic to listen again';
+        });
+      } else {
+        _isListening = false;
+      }
+      return;
     }
     if (mounted) {
       setState(() {
         _voiceStatus = status;
-      });
-    }
-    if (normalized == 'done' ||
-        normalized == 'notlistening' ||
-        normalized == 'donenoresult') {
-      _voiceRetryTimer?.cancel();
-      _voiceRetryTimer = Timer(const Duration(milliseconds: 420), () {
-        if (!mounted || !_isListening) return;
-        _startListening();
       });
     }
   }
@@ -339,19 +346,25 @@ class _HomeScreenState extends State<HomeScreen>
       });
     }
     if (permanent) {
-      _isListening = false;
       if (mounted) {
+        setState(() {
+          _isListening = false;
+          _voiceStatus = 'speech unavailable';
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Speech recognition error: $message')),
         );
       }
       return;
     }
-    _voiceRetryTimer?.cancel();
-    _voiceRetryTimer = Timer(const Duration(milliseconds: 520), () {
-      if (!mounted || !_isListening) return;
-      _startListening();
-    });
+    if (mounted) {
+      setState(() {
+        _isListening = false;
+        _voiceStatus = noMatch ? 'did not hear the word' : 'tap mic to listen again';
+      });
+    } else {
+      _isListening = false;
+    }
   }
 
   String _friendlyVoiceErrorStatus(String message) {
@@ -389,6 +402,16 @@ class _HomeScreenState extends State<HomeScreen>
       _availableLocaleIds = localeIds;
       final systemLocaleId = systemLocale?.localeId;
       final normalizedSystemLocale = systemLocaleId?.toLowerCase();
+      final prefersDevanagariLocale = _looksDevanagari(countTargetNotifier.value);
+
+      if (prefersDevanagariLocale) {
+        for (final localeId in const ['hi_IN', 'mr_IN']) {
+          if (localeIds.contains(localeId)) {
+            _selectedLocaleId = localeId;
+            return;
+          }
+        }
+      }
 
       if (systemLocaleId != null && localeIds.contains(systemLocaleId)) {
         _selectedLocaleId = systemLocaleId;
@@ -397,6 +420,8 @@ class _HomeScreenState extends State<HomeScreen>
 
       const preferredLocales = [
         'en_IN',
+        'en_US',
+        'en_GB',
         'hi_IN',
         'mr_IN',
         'gu_IN',
@@ -450,17 +475,27 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _applyVoiceCount(String transcript) {
-    final target = _normalizeSpeechText(countTargetNotifier.value);
-    if (target.isEmpty || transcript.isEmpty) return;
+    final aliases = _targetAliases(countTargetNotifier.value);
+    if (aliases.isEmpty || transcript.isEmpty) return;
 
-    final currentMatchCount = _countTargetMatches(transcript, target);
-    final delta = currentMatchCount - _lastFinalMatchCount;
+    var currentMatchCount = 0;
+    for (final alias in aliases) {
+      currentMatchCount = math.max(
+        currentMatchCount,
+        _countTargetMatches(transcript, alias),
+      );
+    }
+    final delta = currentMatchCount - _highestSessionMatchCount;
 
     if (delta > 0) {
       _addCount(delta);
+      _highestSessionMatchCount = currentMatchCount;
+      return;
     }
 
-    _lastFinalMatchCount = currentMatchCount;
+    if (currentMatchCount > _highestSessionMatchCount) {
+      _highestSessionMatchCount = currentMatchCount;
+    }
   }
 
   String _normalizeSpeechText(String input) {
@@ -470,6 +505,40 @@ class _HomeScreenState extends State<HomeScreen>
       ' ',
     );
     return cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  bool _looksDevanagari(String input) {
+    return RegExp(r'[\u0900-\u097f]').hasMatch(input);
+  }
+
+  Set<String> _targetAliases(String target) {
+    final normalizedTarget = _normalizeSpeechText(target);
+    if (normalizedTarget.isEmpty) return const {};
+
+    final aliases = <String>{normalizedTarget};
+    final compactTarget = normalizedTarget.replaceAll(' ', '');
+    final devotionalAliases = <String, Set<String>>{
+      'radha': {'radha', 'radhe', 'radhey', 'raadha', 'raatha', 'राधा', 'राधे'},
+      'ram': {'ram', 'raam', 'rama', 'raama', 'राम'},
+      'shiv': {'shiv', 'shiva', 'siva', 'शिव'},
+      'krishna': {
+        'krishna',
+        'krushna',
+        'krisna',
+        'kishan',
+        'kishna',
+        'कृष्ण',
+        'कृष्णा',
+      },
+    };
+
+    for (final entry in devotionalAliases.entries) {
+      if (entry.value.contains(normalizedTarget) || entry.value.contains(compactTarget)) {
+        aliases.addAll(entry.value.map(_normalizeSpeechText).where((value) => value.isNotEmpty));
+      }
+    }
+
+    return aliases;
   }
 
   int _countTargetMatches(String transcript, String target) {

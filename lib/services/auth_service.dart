@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'session_service.dart';
@@ -20,12 +21,20 @@ class AuthUser {
 }
 
 class AuthService {
-  static const String _defaultBaseUrl = 'https://countpluse.onrender.com';
-  static const String baseUrl = String.fromEnvironment(
+  static const String _debugDefaultBaseUrl = 'https://countpluse.onrender.com';
+  static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: _defaultBaseUrl,
   );
   static const Duration _requestTimeout = Duration(seconds: 15);
+
+  static String get baseUrl {
+    final configured = _configuredBaseUrl.trim();
+    if (configured.isNotEmpty) return configured;
+    if (!kReleaseMode) return _debugDefaultBaseUrl;
+    throw StateError(
+      'API_BASE_URL is not configured for this release build.',
+    );
+  }
 
   static Future<AuthUser> register({
     required String name,

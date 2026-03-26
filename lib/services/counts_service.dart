@@ -56,6 +56,47 @@ class CountsService {
     await setCountForDate(date, 0);
   }
 
+  static Future<void> seedDemoHistoryIfEmpty() async {
+    if (_hasScopedCounts()) return;
+
+    final today = DateTime.now();
+    final demoCounts = <int, int>{
+      0: 64,
+      1: 108,
+      2: 72,
+      3: 144,
+      4: 96,
+      5: 54,
+      6: 120,
+      7: 88,
+      8: 132,
+      9: 76,
+      10: 164,
+      11: 92,
+      12: 48,
+      13: 108,
+      14: 150,
+      15: 84,
+      16: 126,
+      17: 97,
+      18: 0,
+      19: 112,
+      20: 68,
+      21: 135,
+      22: 156,
+      23: 82,
+      24: 101,
+      25: 128,
+      26: 73,
+      27: 118,
+    };
+
+    for (final entry in demoCounts.entries) {
+      final date = today.subtract(Duration(days: entry.key));
+      await setCountForDate(date, entry.value);
+    }
+  }
+
   static String _toDateKey(DateTime date) {
     final local = DateTime(date.year, date.month, date.day);
     return local.toIso8601String().split('T').first;
@@ -63,5 +104,12 @@ class CountsService {
 
   static String _scopedKey(String dateKey) {
     return '${SessionService.storageScope}:$dateKey';
+  }
+
+  static bool _hasScopedCounts() {
+    final prefix = '${SessionService.storageScope}:';
+    return _memoryCounts.keys.any(
+      (key) => key.startsWith(prefix) && (_memoryCounts[key] ?? 0) > 0,
+    );
   }
 }

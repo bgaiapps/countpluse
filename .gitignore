@@ -41,6 +41,14 @@ backend/.env
 
 # Project-local notes, plans, and scratch files
 GOOGLE_PLAY_STORE_PLAN.md
+PLAY_CONSOLE_PREP.md
+PLAY_RELEASE_CHECKLIST.md
+PLAY_STORE_LISTING.md
+PRIVACY_POLICY.md
+EULA.md
+brand-concepts/
+play-store-assets/
+assets/test-logo.png
 verify_user.js
 test/code.html
 *.bak

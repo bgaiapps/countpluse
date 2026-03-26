@@ -46,7 +46,7 @@ app.get('/health', (req, res) => {
     environment: env.nodeEnv,
     database: dbStatus,
     uptimeSeconds: Math.round(process.uptime()),
-    message: 'Countpluse backend is running',
+    message: 'Japlo backend is running',
   });
 });
 

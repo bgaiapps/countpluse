@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen>
     final available = await _speech.initialize(
       onStatus: _onSpeechStatus,
       onError: _onSpeechError,
-      debugLogging: true,
+      debugLogging: kDebugMode,
     );
     _speechReady = available;
     _voiceLog('initialize available=$available');

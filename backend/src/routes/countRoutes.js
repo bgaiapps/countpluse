@@ -5,9 +5,12 @@ const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
 
 const router = express.Router();
+const allowDevAuthBypass =
+  process.env.NODE_ENV !== 'production' &&
+  process.env.ENABLE_DEV_AUTH_BYPASS === 'true';
 
 const devUserMiddleware = async (req, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (!allowDevAuthBypass) {
     return authMiddleware(req, res, next);
   }
 

@@ -3,154 +3,182 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Countpluse Legal</title>
+    <title>Japlo</title>
     <meta
       name="description"
-      content="Public legal and store information pages for the Countpluse Android app."
+      content="Japlo is a devotional counting app with a calm home experience, goal tracking, summaries, and optional voice-assisted counting."
     >
-    <style>
-      :root {
-        --bg: #fffbea;
-        --surface: rgba(255, 255, 255, 0.78);
-        --surface-strong: #f2e829;
-        --accent: #f27430;
-        --text: #1f1f1f;
-        --muted: #5c5643;
-        --border: #edd377;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: var(--text);
-        background:
-          radial-gradient(circle at top, rgba(242, 232, 41, 0.72), transparent 40%),
-          linear-gradient(180deg, var(--bg), #fffdf3 100%);
-        min-height: 100vh;
-      }
-
-      .wrap {
-        width: min(860px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 40px 0 64px;
-      }
-
-      .hero {
-        background: linear-gradient(135deg, var(--surface-strong), #f6ee74);
-        border-radius: 24px;
-        padding: 30px;
-        box-shadow: 0 18px 40px rgba(80, 61, 10, 0.08);
-      }
-
-      .eyebrow {
-        margin: 0 0 10px;
-        color: var(--muted);
-        font-size: 0.95rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(2rem, 5vw, 3.2rem);
-        line-height: 1.05;
-      }
-
-      .subtitle {
-        margin: 14px 0 0;
-        max-width: 680px;
-        color: var(--muted);
-        font-size: 1rem;
-      }
-
-      .grid {
-        display: grid;
-        gap: 18px;
-        margin-top: 22px;
-      }
-
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 22px;
-        padding: 24px;
-        backdrop-filter: blur(4px);
-      }
-
-      h2 {
-        margin: 0 0 10px;
-        font-size: 1.3rem;
-      }
-
-      p {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.65;
-      }
-
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 18px;
-      }
-
-      .button {
-        display: inline-block;
-        text-decoration: none;
-        background: var(--accent);
-        color: white;
-        padding: 12px 18px;
-        border-radius: 999px;
-        font-weight: 700;
-      }
-
-      .button.secondary {
-        background: transparent;
-        color: var(--text);
-        border: 1px solid var(--border);
-      }
-    </style>
+    <link rel="stylesheet" href="./site.css?v=7">
   </head>
   <body>
-    <main class="wrap">
-      <section class="hero">
-        <p class="eyebrow">Countpluse</p>
-        <h1>Public App Documents</h1>
-        <p class="subtitle">
-          This site hosts the public legal and store-support pages used for the
-          Countpluse Android release.
-        </p>
-      </section>
+    <div class="shell">
+      <header class="site-header">
+        <div class="topbar">
+          <a class="brand" href="./index.html">
+            <img class="brand-mark-image" src="./japlo-mark.svg" alt="Japlo mark">
+            <span class="brand-copy">
+              <strong>Japlo</strong>
+              <small>Awaken your spirit</small>
+            </span>
+          </a>
+          <nav class="nav">
+            <a class="active" href="./index.html">Home</a>
+            <a href="./features.html">Features</a>
+            <a href="./support.html">Support</a>
+            <a href="./privacy-policy.html">Privacy</a>
+            <a href="./eula.html">EULA</a>
+          </nav>
+        </div>
+      </header>
 
-      <section class="grid">
-        <article class="card">
-          <h2>Privacy Policy</h2>
-          <p>
-            Review how Countpluse handles account information, OTP flows,
-            optional camera and microphone access, and general data usage.
-          </p>
-          <div class="actions">
-            <a class="button" href="./privacy-policy.html">Open Privacy Policy</a>
-          </div>
-        </article>
+      <main>
+        <section class="hero">
+          <article class="hero-card hero-copy">
+            <p class="eyebrow">Japlo App</p>
+            <h1>Count with devotion, not clutter.</h1>
+            <p>
+              Japlo is a calm digital companion for daily devotional counting.
+              It keeps the home screen focused, lets you set a daily goal, review
+              progress, personalize the experience, and optionally explore
+              voice-assisted counting on supported Android devices.
+            </p>
+            <div class="hero-stat-grid">
+              <div class="hero-stat">
+                <strong>Daily</strong>
+                <span>goal-focused devotional counting</span>
+              </div>
+              <div class="hero-stat">
+                <strong>Voice</strong>
+                <span>optional on supported Android devices</span>
+              </div>
+              <div class="hero-stat">
+                <strong>Guest</strong>
+                <span>or OTP account access</span>
+              </div>
+            </div>
+            <div class="hero-actions">
+              <a class="button" href="./features.html">Explore Features</a>
+              <a class="ghost-button" href="./support.html">Get Support</a>
+            </div>
+          </article>
 
-        <article class="card">
-          <h2>End User License Agreement</h2>
-          <p>
-            Review the app usage terms, license scope, acceptable use, and
-            general limitations for Countpluse.
-          </p>
-          <div class="actions">
-            <a class="button secondary" href="./eula.html">Open EULA</a>
+          <aside class="hero-card hero-visual">
+            <div class="hero-logo-wrap">
+              <img class="hero-logo-mark" src="./japlo-mark.svg" alt="Japlo mark">
+              <div class="hero-brand-copy">
+                <span class="hero-brand-word">Japlo</span>
+                <span class="hero-brand-tag">Awaken your spirit</span>
+              </div>
+            </div>
+            <p class="hero-note">
+              A devotional counter that feels focused, personal, and spiritually grounded.
+            </p>
+          </aside>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Why Japlo</p>
+              <h2>A simpler spiritual utility for everyday practice.</h2>
+            </div>
+            <p>
+              Japlo is designed to feel clear, warm, and focused so your daily
+              practice stays at the center of the experience.
+            </p>
           </div>
-        </article>
-      </section>
-    </main>
+
+          <div class="cards-3">
+            <article class="panel feature-panel feature-home">
+              <h3>Focused Home</h3>
+              <p>
+                A central counter, goal ring, and personalized wallpaper keep the
+                experience focused instead of distracting.
+              </p>
+            </article>
+
+            <article class="panel feature-panel feature-progress">
+              <h3>Daily Progress</h3>
+              <p>
+                Track your count through the day and review summary information
+                without jumping through complex navigation.
+              </p>
+            </article>
+
+            <article class="panel feature-panel feature-voice">
+              <h3>Optional Voice Flow</h3>
+              <p>
+                Use voice-assisted counting when your device supports it, while
+                keeping tap-based counting available as the reliable default.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="cards-2">
+            <article class="panel spotlight">
+              <h3>Guest or account access</h3>
+              <p>
+                Start as a guest or continue with OTP-based account access.
+                Japlo is built to stay approachable from the first session.
+              </p>
+              <div class="stat">
+                <strong>Fast start</strong>
+                <span>No heavy onboarding required.</span>
+              </div>
+            </article>
+
+            <article class="panel">
+              <h3>Personalization without noise</h3>
+              <p>
+                Optional profile photo and wallpaper updates help the app feel
+                personal while keeping the interface visually calm.
+              </p>
+              <div class="tag-row">
+                <span class="tag">Profile photo</span>
+                <span class="tag">Wallpaper</span>
+                <span class="tag">Focused visuals</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Public Pages</p>
+              <h2>Everything needed for app listing and support.</h2>
+            </div>
+          </div>
+
+          <div class="legal-grid">
+            <article class="legal-card">
+              <h3>Privacy Policy</h3>
+              <p>
+                Covers account information, OTP handling, optional camera and
+                microphone access, and general data usage.
+              </p>
+              <div class="button-row">
+                <a class="button" href="./privacy-policy.html">Read Privacy Policy</a>
+              </div>
+            </article>
+
+            <article class="legal-card">
+              <h3>End User License Agreement</h3>
+              <p>
+                Covers app usage terms, allowed use, limitations, and general
+                legal terms for the Japlo Android release.
+              </p>
+              <div class="button-row">
+                <a class="ghost-button" href="./eula.html">Read EULA</a>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer"></footer>
+    </div>
   </body>
 </html>

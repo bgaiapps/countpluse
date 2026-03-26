@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'screens/root_shell.dart';
 import 'services/app_settings_service.dart';
 import 'services/counts_service.dart';
@@ -12,6 +13,9 @@ Future<void> main() async {
   await AppSettingsService.init();
   await SessionService.init();
   await CountsService.init();
+  if (kDebugMode) {
+    await CountsService.seedDemoHistoryIfEmpty();
+  }
   await ProfilePhotoService.init();
   await WallpaperService.init();
 
@@ -25,7 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Countpluse',
+      title: 'Japlo',
       theme: AppTheme.theme,
       home: const RootShell(),
     );

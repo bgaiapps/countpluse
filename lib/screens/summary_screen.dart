@@ -778,10 +778,14 @@ List<String> _labelsForWeekly(List<DateTime> dates) {
 }
 
 List<String> _labelsForMonthly(List<DateTime> dates) {
-  return dates.map((date) {
-    if (date.weekday != DateTime.sunday) return '';
-    return '${date.day}-${_monthShort[date.month - 1]}';
-  }).toList();
+  return List<String>.generate(dates.length, (index) {
+    final isWeeklyMarker = index % 7 == 0;
+    final isLastBar = index == dates.length - 1;
+    if (!isWeeklyMarker && !isLastBar) return '';
+
+    final date = dates[index];
+    return '${date.day} ${_monthShort[date.month - 1]}';
+  });
 }
 
 _ChartData _buildSixMonthBuckets(Map<String, int> countMap) {

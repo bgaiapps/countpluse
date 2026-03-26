@@ -1,6 +1,6 @@
-# Countpluse Backend API
+# Japlo Backend API
 
-Backend server for Countpluse user registration, OTP-based authentication, and
+Backend server for Japlo user registration, OTP-based authentication, and
 count history APIs.
 
 ## Features
@@ -260,7 +260,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | `JWT_EXPIRE` | JWT token expiration | `7d` |
 | `EMAIL_PROVIDER` | Email provider (`sendgrid` or `smtp`) | `sendgrid` |
 | `SENDGRID_API_KEY` | SendGrid API key | `SG...` |
-| `EMAIL_FROM` | From email address | `noreply@countpluse.com` |
+| `EMAIL_FROM` | From email address | `noreply@japlo.com` |
 | `OTP_EXPIRE_MINUTES` | OTP expiry in minutes | `10` |
 | `NODE_ENV` | Environment | `production` |
 

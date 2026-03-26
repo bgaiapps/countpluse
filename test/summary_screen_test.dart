@@ -2,21 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:countpluse/screens/summary_screen.dart';
 
-const List<String> _monthShort = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
 Map<String, int> _buildCountsForRange(DateTime start, DateTime end, int value) {
   final map = <String, int>{};
   var current = DateTime(start.year, start.month, start.day);
@@ -31,11 +16,6 @@ Map<String, int> _buildCountsForRange(DateTime start, DateTime end, int value) {
 
 DateTime _stripTime(DateTime value) {
   return DateTime(value.year, value.month, value.day);
-}
-
-DateTime _startOfWeek(DateTime date) {
-  final offset = date.weekday % 7;
-  return date.subtract(Duration(days: offset));
 }
 
 String _formatCount(int value) {
@@ -84,11 +64,11 @@ void main() {
     expect(tester.widget<Text>(countFinder).data, _formatCount(21));
   });
 
-  testWidgets('Monthly labels show day-month for week starts', (tester) async {
+  testWidgets('Monthly labels show fixed weekly date markers', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1200));
     final today = _stripTime(DateTime(2026, 2, 4));
-    final end = _startOfWeek(today);
-    final start = end.subtract(const Duration(days: 21));
+    final end = today;
+    final start = end.subtract(const Duration(days: 27));
     final counts = _buildCountsForRange(start, end, 1);
 
     await tester.pumpWidget(
@@ -101,7 +81,8 @@ void main() {
     await tester.tap(find.text('Monthly'));
     await tester.pumpAndSettle();
 
-    final label = '${end.day}-${_monthShort[end.month - 1]}';
-    expect(find.text(label), findsWidgets);
+    expect(find.text('8-Jan'), findsNothing);
+    expect(find.text('8 Jan'), findsWidgets);
+    expect(find.text('4 Feb'), findsWidgets);
   });
 }

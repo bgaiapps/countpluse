@@ -933,7 +933,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       child: hasWallpaper
                                           ? ColoredBox(
                                               color: Colors.black.withValues(
-                                                alpha: 0.2,
+                                                alpha: 0.3,
                                               ),
                                             )
                                           : null,
@@ -944,31 +944,67 @@ class _HomeScreenState extends State<HomeScreen>
                               SizedBox(
                                 width: innerCircleSize,
                                 height: innerCircleSize,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '$_count',
-                                      style: AppTypography.displayLarge.copyWith(
-                                        fontSize: 72,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    ValueListenableBuilder<String>(
-                                      valueListenable: countTargetNotifier,
-                                      builder: (context, label, _) => Text(
-                                        label.toLowerCase(),
-                                        style: AppTypography.labelLarge.copyWith(
-                                          fontSize: 22,
-                                          letterSpacing: 4,
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w700,
-                                          fontStyle: FontStyle.italic,
+                                child: ValueListenableBuilder<String?>(
+                                  valueListenable: wallpaperPathNotifier,
+                                  builder: (context, wallpaperPath, _) {
+                                    final wallpaperFile = wallpaperPath == null
+                                        ? null
+                                        : File(wallpaperPath);
+                                    final hasWallpaper =
+                                        wallpaperPath != null &&
+                                        wallpaperPath.isNotEmpty &&
+                                        wallpaperFile != null &&
+                                        wallpaperFile.existsSync();
+                                    final countColor = hasWallpaper
+                                        ? const Color(0xFFF5F5F5)
+                                        : AppColors.textPrimary;
+                                    final labelColor = hasWallpaper
+                                        ? const Color(0xFFE6E6E6)
+                                        : AppColors.primary;
+                                    final textShadows = hasWallpaper
+                                        ? [
+                                            Shadow(
+                                              color: Colors.black.withValues(alpha: 0.55),
+                                              blurRadius: 16,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                            Shadow(
+                                              color: Colors.black.withValues(alpha: 0.28),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ]
+                                        : const <Shadow>[];
+
+                                    return Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          '$_count',
+                                          style: AppTypography.displayLarge.copyWith(
+                                            fontSize: 72,
+                                            color: countColor,
+                                            shadows: textShadows,
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  ],
+                                        const SizedBox(height: 12),
+                                        ValueListenableBuilder<String>(
+                                          valueListenable: countTargetNotifier,
+                                          builder: (context, label, _) => Text(
+                                            label.toLowerCase(),
+                                            style: AppTypography.labelLarge.copyWith(
+                                              fontSize: 22,
+                                              letterSpacing: 4,
+                                              color: labelColor,
+                                              fontWeight: FontWeight.w700,
+                                              fontStyle: FontStyle.italic,
+                                              shadows: textShadows,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
                               ),
                               IgnorePointer(

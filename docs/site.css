@@ -1,15 +1,15 @@
 :root {
   --bg: #fffdf5;
   --surface: rgba(255, 251, 239, 0.94);
-  --text: #231b14;
-  --muted: #6e614e;
-  --line: rgba(242, 185, 73, 0.2);
-  --brand: #f27430;
-  --brand-strong: #db6425;
+  --text: #1f2436;
+  --muted: #5f6479;
+  --line: rgba(37, 88, 218, 0.14);
+  --brand: #2960ee;
+  --brand-strong: #1738c0;
   --accent: #f2b949;
-  --sun: #f2e829;
-  --shadow: 0 28px 64px rgba(242, 185, 73, 0.16);
-  --shadow-soft: 0 14px 30px rgba(242, 185, 73, 0.12);
+  --sun: #ffd45e;
+  --shadow: 0 28px 64px rgba(39, 87, 210, 0.12);
+  --shadow-soft: 0 14px 30px rgba(39, 87, 210, 0.1);
   --radius-lg: 30px;
   --radius-md: 20px;
   --space-1: 12px;
@@ -32,9 +32,9 @@ body {
   color: var(--text);
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(242, 185, 73, 0.18), transparent 20%),
-    radial-gradient(circle at 88% 10%, rgba(242, 116, 48, 0.12), transparent 20%),
-    linear-gradient(180deg, #fffef8 0%, #fff8e5 44%, #fffdf5 100%);
+    radial-gradient(circle at top left, rgba(242, 185, 73, 0.22), transparent 20%),
+    radial-gradient(circle at 88% 10%, rgba(41, 96, 238, 0.12), transparent 22%),
+    linear-gradient(180deg, #fffefb 0%, #fff5d7 46%, #fffdf6 100%);
 }
 
 body::before {
@@ -44,7 +44,7 @@ body::before {
   pointer-events: none;
   background-image:
     radial-gradient(circle, rgba(242, 185, 73, 0.1) 0 1px, transparent 1.6px),
-    radial-gradient(circle, rgba(242, 116, 48, 0.06) 0 1px, transparent 1.8px);
+    radial-gradient(circle, rgba(41, 96, 238, 0.05) 0 1px, transparent 1.8px);
   background-position: 0 0, 56px 56px;
   background-size: 120px 120px, 180px 180px;
   opacity: 0.55;
@@ -74,13 +74,13 @@ a {
   justify-content: space-between;
   gap: 18px;
   padding: 16px 20px;
-  border: 1px solid rgba(242, 185, 73, 0.18);
+  border: 1px solid rgba(41, 96, 238, 0.1);
   border-radius: 999px;
   background: rgba(255, 250, 236, 0.86);
   backdrop-filter: blur(16px);
   box-shadow:
-    0 10px 28px rgba(242, 185, 73, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 10px 28px rgba(41, 96, 238, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .brand {
@@ -93,18 +93,18 @@ a {
 
 .brand-mark-image {
   display: block;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
   flex: 0 0 auto;
-  height: auto;
 }
 
 .brand-copy strong {
   display: block;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.18rem;
-  letter-spacing: 0.04em;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--brand-strong);
+  font-size: 1.22rem;
+  letter-spacing: 0.02em;
 }
 
 .brand-copy small {
@@ -132,7 +132,7 @@ a {
 .nav a:hover,
 .nav a.active {
   color: var(--brand-strong);
-  background: rgba(242, 185, 73, 0.12);
+  background: rgba(41, 96, 238, 0.08);
 }
 
 .hero {
@@ -146,7 +146,7 @@ a {
 .legal-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255, 252, 244, 0.98), rgba(255, 244, 212, 0.92));
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.98), rgba(255, 247, 228, 0.94));
   box-shadow: var(--shadow-soft);
 }
 
@@ -161,8 +161,8 @@ a {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 92% 10%, rgba(242, 232, 41, 0.24), transparent 22%),
-    linear-gradient(145deg, rgba(255, 252, 244, 0.98), rgba(255, 244, 212, 0.94));
+    radial-gradient(circle at 92% 10%, rgba(41, 96, 238, 0.12), transparent 22%),
+    linear-gradient(145deg, rgba(255, 252, 244, 0.98), rgba(255, 247, 228, 0.96));
 }
 
 .hero-copy::after,
@@ -174,7 +174,7 @@ a {
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(242, 116, 48, 0.1), transparent 70%);
+  background: radial-gradient(circle, rgba(41, 96, 238, 0.12), transparent 70%);
 }
 
 .hero-logo-wrap {
@@ -186,7 +186,13 @@ a {
 .hero-logo-mark {
   width: min(220px, 48vw);
   height: auto;
-  filter: drop-shadow(0 20px 34px rgba(242, 116, 48, 0.14));
+  filter: drop-shadow(0 20px 34px rgba(41, 96, 238, 0.18));
+}
+
+.hero-logo-image {
+  width: min(320px, 100%);
+  height: auto;
+  filter: drop-shadow(0 18px 30px rgba(41, 96, 238, 0.14));
 }
 
 .hero-brand-copy {
@@ -195,35 +201,12 @@ a {
   text-align: center;
 }
 
-.hero-brand-word {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2.5rem, 5vw, 4.2rem);
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #16233b;
-}
-
-.hero-brand-sub {
-  color: var(--brand);
-  font-size: 0.92rem;
-  font-weight: 700;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-}
-
-.hero-brand-tag {
-  color: #5b10c5;
-  font-size: 1.02rem;
-  font-weight: 500;
-}
-
 .page-hero {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 92% 10%, rgba(242, 232, 41, 0.22), transparent 22%),
-    linear-gradient(145deg, rgba(255, 252, 244, 0.98), rgba(255, 244, 212, 0.94));
+    radial-gradient(circle at 92% 10%, rgba(41, 96, 238, 0.12), transparent 22%),
+    linear-gradient(145deg, rgba(255, 252, 244, 0.98), rgba(255, 247, 228, 0.96));
 }
 
 .eyebrow {
@@ -321,13 +304,13 @@ h3 {
 
 .button {
   color: white;
-  background: linear-gradient(135deg, var(--brand), #f48a45);
-  box-shadow: 0 16px 36px rgba(242, 116, 48, 0.22);
+  background: linear-gradient(135deg, var(--brand), #5b2ee4);
+  box-shadow: 0 16px 36px rgba(41, 96, 238, 0.22);
 }
 
 .ghost-button {
   color: var(--brand-strong);
-  border: 1px solid rgba(242, 185, 73, 0.22);
+  border: 1px solid rgba(41, 96, 238, 0.18);
   background: rgba(255, 255, 255, 0.72);
 }
 
@@ -343,8 +326,8 @@ h3 {
   overflow: hidden;
   padding: 26px 26px 30px;
   background:
-    radial-gradient(circle at 50% 26%, rgba(242, 232, 41, 0.26), transparent 28%),
-    linear-gradient(180deg, rgba(242, 185, 73, 0.92), rgba(242, 116, 48, 0.9));
+    radial-gradient(circle at 50% 26%, rgba(255, 255, 255, 0.68), transparent 24%),
+    linear-gradient(180deg, rgba(242, 185, 73, 0.94), rgba(235, 158, 60, 0.92));
   color: white;
   box-shadow: var(--shadow);
 }
@@ -443,9 +426,10 @@ h3 {
   position: relative;
   z-index: 1;
   margin-top: var(--space-2);
-  color: rgba(255, 250, 239, 0.86);
+  color: rgba(255, 251, 239, 0.92);
   text-align: center;
   font-size: 0.95rem;
+  text-shadow: 0 2px 10px rgba(41, 96, 238, 0.16);
 }
 
 .section {
@@ -500,7 +484,7 @@ main > .content-stack {
   padding: 16px 14px;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.66);
-  border: 1px solid rgba(242, 185, 73, 0.18);
+  border: 1px solid rgba(41, 96, 238, 0.12);
 }
 
 .hero-stat strong {
